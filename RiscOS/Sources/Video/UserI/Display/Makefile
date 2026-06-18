@@ -20,59 +20,54 @@
 # Date       Name         Description
 # ----       ----         -----------
 # 23-Mar-01  SNB          Recreated.
+# 2026       (port)       Converted from assembler (AAsmModule) to C (CModule).
 #
 
 COMPONENT  = DisplayManager
 TARGET     = Display
-ROM_SOURCE = GetAll.s
+CMHGFILE   = modhead
+OBJS       = module
+# C sources that #include the CMunge-generated modhead.h (so the header is
+# generated before they compile).  Add later c/ files here as they are ported.
+CMHGDEPENDS = module
+HDRS       =
+CINCLUDES  = ${RINC}
+CMHGDEFINES = -DCOMPONENT=${COMPONENT} ${CDEFINES}
 INSTRES_FILES = Templates
 INSTRES_VERSION = Messages
+RAMCDEFINES = -DSTANDALONE
 
 include StdTools
-include AAsmModule
+include CModule
+
+# Use CMunge for this component regardless of which BuildSys StdTools is on the
+# make path (the active StdTools still selects the Acorn cmhg, which does not
+# understand module-is-runnable / error-base / error-identifiers).  Overriding
+# after the includes makes the .cmhg rules invoke cmunge.  -32bit because CMunge
+# defaults to -26bit.
+CMHG       = cmunge -tnorcroft -32bit
+
+# ROM C modules are fixed-position: link against the shared C library's absolute
+# symbols, and pull in the run-time library for the standalone (RAM) build.
+ROM_SYMS   = ${ABSSYM}
+SA_LIBS    += ${RLIB}
 
 # Dynamic dependencies:
-o.CortexA7.Display: s.GetAll
-o.CortexA7.Display: Hdr:ListOpts
-o.CortexA7.Display: Hdr:Macros
-o.CortexA7.Display: Hdr:System
-o.CortexA7.Display: Hdr:SWIs
-o.CortexA7.Display: Hdr:CPU.Arch
-o.CortexA7.Display: Hdr:Machine.<Machine>
-o.CortexA7.Display: Hdr:Machine.Machine
-o.CortexA7.Display: Hdr:CPU.Generic26
-o.CortexA7.Display: Hdr:CPU.Generic32
-o.CortexA7.Display: Hdr:IO.GenericIO
-o.CortexA7.Display: Hdr:RISCOS
-o.CortexA7.Display: Hdr:ModHand
-o.CortexA7.Display: Hdr:Services
-o.CortexA7.Display: Hdr:Wimp
-o.CortexA7.Display: Hdr:WimpSpace
-o.CortexA7.Display: Hdr:MsgTrans
-o.CortexA7.Display: Hdr:MsgMenus
-o.CortexA7.Display: Hdr:ResourceFS
-o.CortexA7.Display: Hdr:NdrDebug
-o.CortexA7.Display: Hdr:HostFS
-o.CortexA7.Display: Hdr:DDVMacros
-o.CortexA7.Display: Hdr:Proc
-o.CortexA7.Display: Hdr:Messages
-o.CortexA7.Display: Hdr:Sprite
-o.CortexA7.Display: Hdr:VduExt
-o.CortexA7.Display: Hdr:FileTypes
-o.CortexA7.Display: Hdr:Variables
-o.CortexA7.Display: Hdr:FSNumbers
-o.CortexA7.Display: Hdr:NewErrors
-o.CortexA7.Display: Hdr:ScrModes
-o.CortexA7.Display: Hdr:ColourTran
-o.CortexA7.Display: Hdr:GraphicsV
-o.CortexA7.Display: VersionASM
-o.CortexA7.Display: s.Front
-o.CortexA7.Display: s.Errors
-o.CortexA7.Display: s.Module
-o.CortexA7.Display: s.Icon
-o.CortexA7.Display: s.Window
-o.CortexA7.Display: s.Menu
-o.CortexA7.Display: s.Message
-o.CortexA7.Display: s.Mouse
-o.CortexA7.Display: s.Mode
-o.CortexA7.Display: s.MsgTrans
+o.module:	c.module
+o.module:	C:h.kernel
+o.module:	C:h.swis
+o.module:	C:Global.h.RISCOS
+o.module:	C:Global.h.Services
+o.module:	C:Global.h.ModHand
+o.module:	C:Global.h.Variables
+o.module:	h.modhead
+o.module:	C:h.kernel
+o.module:	h.display
+o.module:	C:h.kernel
+o.module:	h.options
+h.modhead:	cmhg.modhead
+h.modhead:	C:Global.h.Services
+h.modhead:	VersionNum
+o.modhead:	cmhg.modhead
+o.modhead:	C:Global.h.Services
+o.modhead:	VersionNum

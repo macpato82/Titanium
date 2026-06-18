@@ -1,0 +1,81 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Message-file handling (was s/MsgTrans).  Opens the module's Messages file on
+ * demand and looks up tokens / error tokens in it.  The file block lives in the
+ * shared state (g.message_file_block); f_messagesopen tracks whether it is open.
+ */
+#include "kernel.h"
+#include "swis.h"
+
+#include "display.h"
+
+/* Open our Messages file if it is not already open (was MsgTrans_OpenFile). */
+_kernel_oserror *msgtrans_openfile(void)
+{
+  _kernel_oserror *e;
+
+  if (g.flags & f_messagesopen)
+    return NULL;
+
+  e = _swix(MessageTrans_OpenFile, _INR(0,2),
+            g.message_file_block, MESSAGES_FILE, 0);
+  if (e == NULL)
+    g.flags |= f_messagesopen;
+
+  return e;
+}
+
+/* Look up an error token block, returning the translated error (was
+ * MsgTrans_ErrorLookup).  MessageTrans_ErrorLookup returns with V set and R0 ->
+ * the (translated) error block, so _swix hands us that block back directly. */
+_kernel_oserror *msgtrans_errorlookup(const _kernel_oserror *err,
+                                      const void *p0, const void *p1,
+                                      const void *p2, const void *p3)
+{
+  _kernel_oserror *e = msgtrans_openfile();
+  if (e)
+    return e;
+
+  return _swix(MessageTrans_ErrorLookup, _INR(0,7),
+               err, g.message_file_block, 0, 0, p0, p1, p2, p3);
+}
+
+/* Look up a text token (was MsgTrans_Lookup).  Copies the result into buf (if
+ * given) and returns a pointer to it; *len (if non-NULL) gets the length. */
+char *msgtrans_lookup(const char *token, char *buf, int size, int *len)
+{
+  char *result = buf;
+  int used = 0;
+
+  if (msgtrans_openfile() != NULL)
+  {
+    if (buf && size)
+      buf[0] = '\0';
+    if (len)
+      *len = 0;
+    return buf;
+  }
+
+  /* R2 = buffer (result copied here), R3 = size; out R2 -> string, R3 = length. */
+  _swix(MessageTrans_Lookup, _INR(0,3) | _OUT(2) | _OUT(3),
+        g.message_file_block, token, buf, size, &result, &used);
+
+  if (len)
+    *len = used;
+
+  return result;
+}

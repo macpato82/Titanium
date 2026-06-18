@@ -1,0 +1,182 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Shared module state, constants and cross-file prototypes for DisplayManager.
+ * The single persistent state block (formerly the assembler workspace mapped in
+ * s/Front) is the global `g` below; it is ordinary static data, relocated by the
+ * Shared C Library, and must NOT be stashed in the module private word.
+ */
+#ifndef DISPLAY_DISPLAY_H
+#define DISPLAY_DISPLAY_H
+
+#include "kernel.h"
+#include "options.h"
+
+/* --- Resource file names (resolved via DisplayManager$$Path) ------------- */
+#define MESSAGES_FILE      "DisplayManager:Messages"
+#define TEMPLATES_FILE     "DisplayManager:Templates"
+
+/* --- Task identifier and Wimp version ----------------------------------- */
+#define TASK_ID            0x4b534154   /* "TASK" */
+#define WIMP_VERSION_MIN   300          /* require RISC OS 3 (Wimp 3.00)    */
+
+/* Task lifecycle sentinels stored in g.task_handle (cf. WindowScroll). */
+#define TASKHANDLE_NONE     0
+#define TASKHANDLE_STARTING (-1)
+
+/* --- Wimp_Poll mask (was poll_mask in s/Front) -------------------------- */
+/* null_bit (1<<0) | pointerchange_bits ((1<<4)|(1<<5)) | pollwordfast_enable
+ * (3<<22) : mask out null and pointer-enter/leave, enable fast poll word. */
+#define POLL_MASK          0x00C00031
+
+/* --- Wimp event reason codes we act on ---------------------------------- */
+enum {
+  event_NULL            = 0,
+  event_REDRAW          = 1,
+  event_OPEN            = 2,
+  event_CLOSE           = 3,
+  event_POINTER_LEAVE   = 4,
+  event_POINTER_ENTER   = 5,
+  event_MOUSE_CLICK     = 6,
+  event_USER_DRAG       = 7,
+  event_KEY_PRESSED     = 8,
+  event_MENU_SELECTION  = 9,
+  event_SCROLL          = 10,
+  event_LOSE_CARET      = 11,
+  event_GAIN_CARET      = 12,
+  event_POLLWORD_NONZERO= 13,
+  event_USER_MESSAGE    = 17,
+  event_USER_MESSAGE_REC= 18,
+  event_USER_MESSAGE_ACK= 19
+};
+
+/* --- Wimp message action numbers (from Hdr:Messages) -------------------- */
+#define Message_Quit             0x0
+#define Message_DataSave         0x1
+#define Message_DataSaveAck      0x2
+#define Message_DataLoad         0x3
+#define Message_DataLoadAck      0x4
+#define Message_PaletteChange    0x9
+#define Message_HelpRequest      0x502
+#define Message_HelpReply        0x503
+#define Message_MenuWarning      0x400C0
+#define Message_MenusDeleted     0x400C9
+
+/* --- Module flags (g.flags) --------------------------------------------- */
+#define f_greylevel        0x01   /* current mode is grey level            */
+#define f_messagesopen     0x02   /* messages file is open                 */
+#define f_ratemenuvalid    0x04   /* rate menu is valid                    */
+
+/* --- Poll-word non-zero flags (g.pollword) ------------------------------ */
+#define pf_refreshicons    (1u << 0)
+#define pf_modeinit        (1u << 1)
+#define pf_settitle        (1u << 2)
+
+/* --- Colours menu items (selected_colours / menu indices) --------------- */
+enum colour_item {
+  mo_co_mono     = 0,
+  mo_co_grey4    = 1,
+  mo_co_grey16   = 2,
+  mo_co_colour16 = 3,
+  mo_co_grey256  = 4,
+  mo_co_colour256= 5,
+  mo_co_4K       = 6,
+  mo_co_32K      = 7,
+  mo_co_64K      = 8,
+  mo_co_16M      = 9
+};
+
+/* --- Sizes ------------------------------------------------------------- */
+#define MAX_BANNER_SIZE    60     /* max length of the task banner string  */
+
+/* --- Persistent module state (was the s/Front workspace) ---------------- */
+typedef struct display_state {
+  int   task_handle;          /* TASKHANDLE_NONE / _STARTING / real handle */
+  int   pollword;             /* poll word for Wimp_Poll; see pf_*         */
+
+  /* window / icon handles */
+  int   icon_handle;
+  int   info_handle;
+  int   mode_handle;
+  int   display_handle;
+  int   menu_handle;
+
+  /* indirected window data block and sub-pointers/sizes */
+  char *indirected_data;
+  char *mode_indirect;        int mode_size;
+  char *resolution_indirect;  int resolution_size;
+  char *colours_indirect;     int colours_size;
+#if OPT_SELECTFRAMERATE
+  char *rate_indirect;        int rate_size;
+#endif
+  char *title_indirect;       int title_size;
+
+  /* mode data (separately claimed block; see c/mode) */
+  void  *mode_space;
+  void  *mode_sortedlist;     /* mode_desc **  : all modes, sorted, 0-term */
+  void  *mode_classlist;      /* mode_desc *** : one per resolution        */
+  void  *mode_menulist;       /* mode_desc ****: per resolution-menu item  */
+  void  *mode_table;          /* raw enumeration data                      */
+  void  *m_resolutionmenu;    int m_resolutionsize;
+#if OPT_SELECTFRAMERATE
+  void  *m_ratemenu;          int m_ratesize;
+#endif
+
+  int   mode_count;
+  void *selected_subclass;
+  void *selected_mode;
+#if OPT_LOADMODEFILES
+  int   scrap_ref;
+#endif
+
+  int   message_file_block[4];/* MessageTrans file block                   */
+  int   wimp_palette[4];      /* cached palette (16 bytes)                 */
+
+  unsigned char flags;
+  unsigned char selected_colours;
+  unsigned char selected_class;
+  unsigned char resolution_count;
+#if OPT_SORTONPIXELSHAPE
+  unsigned char class_count;
+#endif
+#if OPT_SELECTFRAMERATE
+  unsigned char rate_count;
+#endif
+  unsigned char menu_tick;
+} display_state;
+
+/* The single persistent state instance (defined in c/module). */
+extern display_state g;
+
+/* --- Cross-file prototypes ---------------------------------------------- *
+ * Declared here as the port progresses; each is defined in the file noted.
+ * Functions return a _kernel_oserror* (NULL on success) unless stated.      */
+
+/* c/module */
+extern void             mod_pollword(void);
+extern void             mod_shutdown(void);
+extern int              scanpalette(void);   /* non-zero => palette changed */
+extern int              mod_reporterror(_kernel_oserror *e, int flags);
+
+/* c/msgtrans */
+extern _kernel_oserror *msgtrans_openfile(void);
+extern _kernel_oserror *msgtrans_errorlookup(const _kernel_oserror *err,
+                                             const void *p0, const void *p1,
+                                             const void *p2, const void *p3);
+extern char            *msgtrans_lookup(const char *token, char *buf, int size,
+                                        int *len);
+
+#endif

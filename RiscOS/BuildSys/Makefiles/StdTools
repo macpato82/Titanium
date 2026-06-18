@@ -36,7 +36,9 @@ BINAOF          = binaof
 CAT             = print
 CC              = cc
 C++             = c++
-CMHG            = cmhg
+# CMunge replaces the Acorn CMHG tree-wide (drop-in superset of cmhg).
+# Norcroft (DDE) veneers; -32bit because CMunge defaults to -26bit.
+CMHG            = cmunge -tnorcroft -32bit
 CPREPRO         = cc -C++ -E
 DATA2AOF        = datatoaof
 DEFMOD          = defmod

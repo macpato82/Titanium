@@ -1,0 +1,79 @@
+; Copyright 1996 Acorn Computers Ltd
+;
+; Licensed under the Apache License, Version 2.0 (the "License");
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+;
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
+;
+; Module header for DisplayManager.
+;
+; Ported from assembler to C, 2026 (behaviour unchanged).  This header
+; replaces the hand-written module header that used to live in s/Module.
+;
+; Processed by CMunge (a superset of CMHG): it provides module-is-runnable and
+; the native error-base/error-identifiers used below.
+;
+; The module is a Wimp application (the screen-mode chooser).  It is entered
+; as the current application via OS_Module Enter when the *Desktop_DisplayManager
+; command runs (issued by *Desktop in response to Service_StartWimp), hence
+; "module-is-runnable:".  The application body is main() in c/module.
+
+#include "Global/Services.h"
+#include "VersionNum"
+
+; Runnable: the module can be entered (OS_Module Enter); the default start veneer
+; sets up the C run-time and calls main() (see c/module).
+module-is-runnable:
+
+title-string:           DisplayManager
+
+help-string:            DisplayManager Module_MajorVersion_CMHG Module_MinorVersion_CMHG
+
+date-string:            Module_Date_CMHG
+
+initialisation-code:    module_init
+
+finalisation-code:      module_final
+
+; Services handled (active build: standalone=OFF, MessageChanging=OFF).  Keep the
+; same set the assembler Ursula table offered, in ascending service-number order:
+;   Reset, ModeChange, StartWimp, StartedWimp, CalibrationChanged, WimpPalette,
+;   ModeFileChanged.
+service-call-handler:   module_service Service_Reset,
+                                       Service_ModeChange,
+                                       Service_StartWimp,
+                                       Service_StartedWimp,
+                                       Service_CalibrationChanged,
+                                       Service_WimpPalette,
+                                       Service_ModeFileChanged
+
+; The *Desktop_DisplayManager command simply enters us as the task (OS_Module
+; Enter).  Help / syntax come from the message file (international help).
+command-keyword-table:  module_commands
+        Desktop_DisplayManager(min-args:0, max-args:0,
+                international:,
+                help-text:      "HDPMDSK",
+                invalid-syntax: "SDPMDSK")
+
+international-help-file: "Resources:$.Resources.Display.Messages"
+
+; Error blocks (was s/Errors: ^ ErrorBase_Modes + AddError list).  The strings
+; are MessageTrans tokens, expanded at run time via MessageTrans_ErrorLookup, so
+; behaviour and error numbers (&C00..&C07) match the assembler exactly.  CMunge
+; exports each identifier as a _kernel_oserror * macro.
+error-base:             &C00
+error-identifiers:      Modes_CantStart("UseDesk"),
+                        Modes_NoWimp("NoWimp"),
+                        Modes_NoTemplate("E00"),
+                        Modes_Unsupported("E01"),
+                        Modes_CantEnumerate("E02"),
+                        Modes_NoScrap("E03"),
+                        Modes_InvalidMode("E04"),
+                        Modes_InvalidFile("E05")

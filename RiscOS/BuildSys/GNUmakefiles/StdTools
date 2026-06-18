@@ -51,7 +51,8 @@ AR              = armlib
 AS              = armasm
 CC              = armcc
 C++             = armcpp
-CMHG            = armcmhg
+# CMunge replaces the Acorn CMHG tree-wide (drop-in superset of armcmhg).
+CMHG            = cmunge -tnorcroft
 CPREPRO         = armcc -C++ -E
 ELF2AIF         = @echo > /dev/null
 FC              = armf77
@@ -214,7 +215,8 @@ else
 ARFLAGS     := -c -o
 ASFLAGS     += ${OBJASM_TOOLOPTIONS} -Stamp -quit
 CFLAGS      += ${NCC_TOOLOPTIONS}
-CMHGFLAGS   += ${TOOLOPTIONS}
+# CMunge wants the fuller tool options (incl. -apcs); armcmhg used ${TOOLOPTIONS}.
+CMHGFLAGS   += ${CMUNGE_TOOLOPTIONS}
 SQUISHFLAGS += -nolist -nosavepath -sysfrom ${LIBDIR}/CLib/swis.h
 CHALFLAGS   += -APCS /nofp/noswst
 CKRNFLAGS   += -APCS /nofp/noswst

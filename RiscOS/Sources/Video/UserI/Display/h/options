@@ -1,0 +1,51 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Build options.  These mirror the SETL switches that used to live at the top
+ * of s/GetAll, with the same values as this source tree built with.  Disabled
+ * features are kept behind #if so they remain easy to re-enable and so the port
+ * documents the original conditional code.
+ */
+#ifndef DISPLAY_OPTIONS_H
+#define DISPLAY_OPTIONS_H
+
+/* Register ResourceFS files (vs rely on ROM resources).  ROM build: OFF.
+ * Enabled for the RAM/standalone build via -DSTANDALONE in the Makefile. */
+#ifdef STANDALONE
+#define OPT_STANDALONE        1
+#else
+#define OPT_STANDALONE        0
+#endif
+
+/* Use OS_ScreenMode (vs old OS_Byte 135).  ON. */
+#define OPT_MEDUSA            1
+
+/* Offer a frame-rate menu and rate icon.  ON. */
+#define OPT_SELECTFRAMERATE   1
+
+/* Accept DataLoad/DataSave of mode description files.  ON. */
+#define OPT_LOADMODEFILES     1
+
+/* Sort modes by pixel shape into resolution classes.  ON. */
+#define OPT_SORTONPIXELSHAPE  1
+
+/* Handle Service_MessageFileClosed.  OFF in this tree. */
+#define OPT_MESSAGECHANGING   0
+
+/* Allow packed 24bpp modes.  OFF in this tree. */
+#define OPT_ALLOW24BPP        0
+
+#endif

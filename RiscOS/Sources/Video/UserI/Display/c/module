@@ -1,0 +1,372 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Module interface and application body for DisplayManager.
+ *
+ * Replaces s/Module and s/Front.  Contains:
+ *   - the relocatable-module entry points (init / final / service / command);
+ *   - the Wimp task lifecycle (Service_StartWimp offers the command, the command
+ *     OS_Module Enter's us, main() runs the task) - cf. Desktop/WindowScroll;
+ *   - the Wimp poll loop and its deferred-update handling (poll word);
+ *   - shut-down, palette scanning and small shared helpers.
+ *
+ * Per the C-module rules, all persistent state lives in the global `g`
+ * (relocated by the Shared C Library); the private word is never overwritten.
+ */
+#include <stdlib.h>
+#include <string.h>
+#include <stddef.h>
+
+#include "kernel.h"
+#include "swis.h"
+
+#include "Global/RISCOS.h"
+#include "Global/Services.h"
+#include "Global/ModHand.h"
+#include "Global/Variables.h"
+
+#include "modhead.h"
+#include "display.h"
+
+/* Path variable and its default (was Mod_Path / Mod_PathDefault in s/Module). */
+#define PATH_VAR      "DisplayManager$$Path"
+#define PATH_DEFAULT  "Resources:$.Resources.Display."
+
+/* The single persistent state block (was the s/Front workspace). */
+display_state g;
+
+/* Wimp messages we want delivered (was messages_list in s/Module). */
+static const int messages_list[] = {
+  Message_MenuWarning,
+  Message_MenusDeleted,
+  Message_HelpRequest,
+#if OPT_LOADMODEFILES
+  Message_DataLoad,
+  Message_DataSave,
+#endif
+  0
+};
+
+/* ----------------------------------------------------------------------- *
+ *  Palette scanning (was scanpalette in s/Module).
+ *  Reads the current Wimp palette, compares the low 8 bits of each of the
+ *  16 entries against the cached copy, updates the cache, and reports whether
+ *  anything changed.
+ * ----------------------------------------------------------------------- */
+int scanpalette(void)
+{
+  int newpal[20];           /* Wimp_ReadPalette wants a 20-word block */
+  unsigned char *cache = (unsigned char *)g.wimp_palette;
+  int changed = 0;
+  int i;
+
+  if (_swix(Wimp_ReadPalette, _IN(1), newpal))
+    return 0;
+
+  for (i = 0; i < 16; i++)
+  {
+    unsigned char old = cache[i];
+    unsigned char now = (unsigned char)newpal[i];
+    cache[i] = now;
+    if (now != old)
+      changed = 1;
+  }
+  return changed;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Deferred updates triggered by the poll word (was Mod_PollWord).
+ * ----------------------------------------------------------------------- */
+void mod_pollword(void)
+{
+  int pw = g.pollword;
+
+  if (pw & pf_settitle)
+  {
+    /* TODO(step3): Window_SetTitle(); */
+  }
+  if (pw & pf_modeinit)
+  {
+    /* TODO(step4): Mode_Init(); */
+  }
+  if (pw & pf_refreshicons)
+  {
+    /* TODO(step3): Icon_Refresh(); */
+  }
+
+  g.pollword = 0;           /* safest thing to do (cf. assembler) */
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Shut down (was Mod_ShutDown): close the task and free resources.
+ * ----------------------------------------------------------------------- */
+void mod_shutdown(void)
+{
+  if (g.task_handle > 0)
+  {
+    _swix(Wimp_CloseDown, _INR(0,1), g.task_handle, TASK_ID);
+    g.task_handle = TASKHANDLE_NONE;
+  }
+
+  if (g.flags & f_messagesopen)
+  {
+    _swix(MessageTrans_CloseFile, _IN(0), g.message_file_block);
+    g.flags &= ~f_messagesopen;
+  }
+
+  if (g.indirected_data)
+  {
+    _swix(OS_Module, _INR(0,2), ModHandReason_Free, 0, g.indirected_data);
+    g.indirected_data = NULL;
+  }
+  if (g.mode_space)
+  {
+    _swix(OS_Module, _INR(0,2), ModHandReason_Free, 0, g.mode_space);
+    g.mode_space = NULL;
+  }
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Module initialisation (was Mod_Init).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *module_init(const char *cmd_tail, int podule_base, void *pw)
+{
+  char buffer[256];
+  int used = 0;
+
+  (void)cmd_tail;
+  (void)podule_base;
+  (void)pw;
+
+#if OPT_STANDALONE
+  /* TODO(step2): ResourceFS_RegisterFiles(Resources()); */
+#endif
+
+  /* Set DisplayManager$$Path to its default if not already defined. */
+  if (_swix(OS_ReadVarVal, _INR(0,4) | _OUT(2),
+            PATH_VAR, buffer, sizeof(buffer), 0, VarType_Expanded, &used) != NULL
+      || used == 0)
+  {
+    _swix(OS_SetVarVal, _INR(0,4),
+          PATH_VAR, PATH_DEFAULT, sizeof(PATH_DEFAULT) - 1, 0, VarType_String);
+  }
+
+  return NULL;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Module finalisation (was Mod_Die).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *module_final(int fatal, int podule_base, void *pw)
+{
+  (void)fatal;
+  (void)podule_base;
+  (void)pw;
+
+  mod_shutdown();
+
+#if OPT_STANDALONE
+  /* TODO(step2): ResourceFS_DeregisterFiles(Resources()); */
+#endif
+
+  return NULL;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Service call handler (was the Ursula table dispatch in s/Module).
+ * ----------------------------------------------------------------------- */
+void module_service(int service_number, _kernel_swi_regs *r, void *pw)
+{
+  (void)pw;
+
+  switch (service_number)
+  {
+  case Service_StartWimp:
+    /* Offer our start-up command if we're not already running/starting. */
+    if (g.task_handle == TASKHANDLE_NONE)
+    {
+      g.task_handle = TASKHANDLE_STARTING;
+      r->r[1] = 0;                                  /* claim the service   */
+      r->r[0] = (int)"Desktop_DisplayManager";
+    }
+    break;
+
+  case Service_StartedWimp:
+    /* Our command never ran - revert so the user can try again. */
+    if (g.task_handle == TASKHANDLE_STARTING)
+      g.task_handle = TASKHANDLE_NONE;
+    break;
+
+  case Service_Reset:
+    if (g.task_handle == TASKHANDLE_STARTING)
+      g.task_handle = TASKHANDLE_NONE;
+    else
+      mod_shutdown();
+    break;
+
+  case Service_ModeChange:
+    if (g.task_handle > 0)
+      g.pollword |= pf_modeinit | pf_refreshicons;
+    break;
+
+  case Service_CalibrationChanged:
+    if (g.task_handle > 0)
+      g.pollword |= pf_modeinit | pf_refreshicons;
+    break;
+
+  case Service_WimpPalette:
+    if (g.task_handle > 0)
+    {
+      g.pollword |= pf_modeinit | pf_refreshicons;
+      _swix(ColourTrans_InvalidateCache, 0);
+      if (scanpalette())
+        _swix(Wimp_ForceRedraw, _INR(0,4),
+              -1, -0x0FFFFFFF, -0x0FFFFFFF, 0x0FFFFFFF, 0x0FFFFFFF);
+      /* Tell everyone the palette changed (as the Palette utility did). */
+      {
+        int msg[5];
+        msg[0] = sizeof(msg);   /* ms_data = 5 words */
+        msg[3] = 0;
+        msg[4] = Message_PaletteChange;
+        _swix(Wimp_SendMessage, _INR(0,2), 17 /* User_Message */, msg, 0);
+      }
+    }
+    break;
+
+  case Service_ModeFileChanged:
+    if (g.task_handle > 0)
+    {
+      /* TODO(step5): Menu_Init(); refresh iconbar icon (display sprite). */
+      g.pollword |= pf_modeinit | pf_refreshicons | pf_settitle;
+    }
+    break;
+
+  default:
+    break;
+  }
+}
+
+/* ----------------------------------------------------------------------- *
+ *  *Command handler (was Desktop_DisplayManager_Code).
+ *  Enter ourselves as the current application.
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *module_commands(const char *arg_string, int argc,
+                                 int cmd_no, void *pw)
+{
+  (void)arg_string;
+  (void)argc;
+  (void)cmd_no;
+  (void)pw;
+
+  return _swix(OS_Module, _INR(0,2), ModHandReason_Enter, Module_Title, NULL);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Application body (was Mod_Start).
+ *  Runs once we have been OS_Module Enter'd as the current task.
+ * ----------------------------------------------------------------------- */
+static void task_finished(void)
+{
+  /* Registered with atexit: mark us no longer running. */
+  g.task_handle = TASKHANDLE_NONE;
+}
+
+static void quit(_kernel_oserror *e)
+{
+  if (e)
+  {
+    mod_reporterror(e, 1 /* OK button */);
+    exit(EXIT_FAILURE);
+  }
+  exit(EXIT_SUCCESS);
+}
+
+int main(int argc, char **argv)
+{
+  _kernel_oserror *e;
+  int handle, version;
+  char banner[MAX_BANNER_SIZE];
+
+  (void)argc;
+  (void)argv;
+
+  atexit(task_finished);
+
+  /* Task name comes from the "Title" token in the Messages file. */
+  msgtrans_lookup("Title", banner, sizeof(banner), NULL);
+
+  e = _swix(Wimp_Initialise, _INR(0,3) | _OUT(0) | _OUT(1),
+            WIMP_VERSION_MIN, TASK_ID, banner, messages_list,
+            &version, &handle);
+  if (e)
+    quit(e);
+
+  if (version < WIMP_VERSION_MIN)
+  {
+    _swix(Wimp_CloseDown, 0);
+    _swix(OS_GenerateError, _IN(0),
+          msgtrans_errorlookup(Modes_NoWimp, 0, 0, 0, 0));
+    exit(EXIT_FAILURE);   /* not reached: OS_GenerateError does not return */
+  }
+
+  g.task_handle = handle;
+
+  /* TODO(step3): Icon_Init(); Window_Init(); */
+  /* TODO(step5): Menu_Init(); */
+  /* TODO(step4): Mode_Init(); */
+
+#if OPT_LOADMODEFILES
+  g.scrap_ref = -1;
+#endif
+  g.pollword = 0;
+
+  for (;;)
+  {
+    int block[64];
+    int event;
+
+    if (_swix(Wimp_Poll, _INR(0,1) | _IN(3) | _OUT(0),
+              POLL_MASK, block, &g.pollword, &event))
+      continue;
+
+    switch (event)
+    {
+    /* TODO(step3): event_OPEN -> Window_Open; event_CLOSE -> Window_Close */
+    /* TODO(step6): event_MOUSE_CLICK -> Mouse_Click                      */
+    /* TODO(step4): event_KEY_PRESSED -> Mode_KeyPressed                  */
+    /* TODO(step5): event_MENU_SELECTION -> Menu_Selection               */
+
+    case event_POLLWORD_NONZERO:
+      mod_pollword();
+      break;
+
+    case event_USER_MESSAGE:
+    case event_USER_MESSAGE_REC:
+      /* TODO(step6): Message_Received / Message_Recorded full dispatch. */
+      if (block[4] == Message_Quit)
+      {
+        mod_shutdown();
+        exit(EXIT_SUCCESS);
+      }
+      break;
+
+    default:
+      break;
+    }
+  }
+
+  return 0;
+}
