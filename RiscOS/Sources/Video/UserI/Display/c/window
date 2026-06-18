@@ -1,0 +1,246 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Window template loading and window management (was s/Window).  Loads the
+ * Display, Mode and Info windows from the Templates file into a single claimed
+ * scratch block (freed after creation) plus a claimed indirected-data block
+ * (kept for the icon text), then creates the windows.
+ */
+#include <string.h>
+
+#include "kernel.h"
+#include "swis.h"
+
+#include "Global/ModHand.h"
+
+#include "modhead.h"
+#include "display.h"
+#include "wimpdefs.h"
+
+/* Template names in the Templates file. */
+#define WN_DISPLAY  "Display"
+#define WN_MODE     "Mode"
+#define WN_INFO     "Info"
+
+/* ----------------------------------------------------------------------- *
+ *  Template helpers (were load_template / add_template in s/Window).
+ *  Wimp_LoadTemplate may write the matched name back into the name buffer, so
+ *  a writable copy is passed in R5.
+ * ----------------------------------------------------------------------- */
+
+/* Size a template: window-block size and indirected-data size needed. */
+static _kernel_oserror *size_template(const char *name, int *win_size,
+                                      int *ind_size)
+{
+  char namebuf[16];
+  int r1 = -1, r2 = 0, r6 = 0;
+  _kernel_oserror *e;
+
+  strncpy(namebuf, name, sizeof(namebuf) - 1);
+  namebuf[sizeof(namebuf) - 1] = '\0';
+
+  e = _swix(Wimp_LoadTemplate, _INR(1,6) | _OUT(1) | _OUT(2) | _OUT(6),
+            -1, 0, 0, -1, namebuf, 0, &r1, &r2, &r6);
+  if (e)
+    return e;
+  if (r6 == 0)
+    return msgtrans_errorlookup(Modes_NoTemplate, 0, 0, 0, 0);
+
+  *win_size = r1;
+  *ind_size = r2;
+  return NULL;
+}
+
+/* Load a template into buffer, advancing *indirect past the data it consumes. */
+static _kernel_oserror *load_template(void *buffer, char **indirect,
+                                      char *indirect_end, const char *name)
+{
+  char namebuf[16];
+  int r2 = 0, r6 = 0;
+  _kernel_oserror *e;
+
+  strncpy(namebuf, name, sizeof(namebuf) - 1);
+  namebuf[sizeof(namebuf) - 1] = '\0';
+
+  e = _swix(Wimp_LoadTemplate, _INR(1,6) | _OUT(2) | _OUT(6),
+            buffer, *indirect, indirect_end, -1, namebuf, 0, &r2, &r6);
+  if (e)
+    return e;
+  if (r6 == 0)
+    return msgtrans_errorlookup(Modes_NoTemplate, 0, 0, 0, 0);
+
+  *indirect = (char *)r2;
+  return NULL;
+}
+
+/* Fill the Info window's version icon from the "_Version" token. */
+static void patch_info_version(void *tmpl)
+{
+  char *buf = WIMP_ICON_BUF(tmpl, ic_info_version);
+  int   size = WIMP_ICON_SIZE(tmpl, ic_info_version);
+  msgtrans_lookup("_Version", buf, size, NULL);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Create the windows from the Templates file (was Window_Init).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *window_init(void)
+{
+  _kernel_oserror *e;
+  int max_win = 0, total_ind = 0, ws, is;
+  void *scratch = NULL;
+  char *indirect, *indirect_end;
+
+  e = _swix(Wimp_OpenTemplate, _IN(1), TEMPLATES_FILE);
+  if (e)
+    return e;
+
+  /* Work out how much space the templates need. */
+  if ((e = size_template(WN_DISPLAY, &ws, &is)) != NULL) goto close;
+  if (ws > max_win) max_win = ws;
+  total_ind += is;
+  if ((e = size_template(WN_MODE, &ws, &is)) != NULL) goto close;
+  if (ws > max_win) max_win = ws;
+  total_ind += is;
+  if ((e = size_template(WN_INFO, &ws, &is)) != NULL) goto close;
+  if (ws > max_win) max_win = ws;
+  total_ind += is;
+
+  /* Scratch for the largest template, plus space for all indirected data. */
+  e = _swix(OS_Module, _IN(0) | _IN(3) | _OUT(2),
+            ModHandReason_Claim, max_win, &scratch);
+  if (e) goto close;
+  e = _swix(OS_Module, _IN(0) | _IN(3) | _OUT(2),
+            ModHandReason_Claim, total_ind, &g.indirected_data);
+  if (e) goto free_scratch;
+
+  indirect = g.indirected_data;
+  indirect_end = indirect + total_ind;
+
+  /* Display window. */
+  if ((e = load_template(scratch, &indirect, indirect_end, WN_DISPLAY)) != NULL)
+    goto free_all;
+  g.resolution_indirect = WIMP_ICON_BUF(scratch, ic_display_resolution);
+  g.resolution_size     = WIMP_ICON_SIZE(scratch, ic_display_resolution);
+  g.colours_indirect    = WIMP_ICON_BUF(scratch, ic_display_colours);
+  g.colours_size        = WIMP_ICON_SIZE(scratch, ic_display_colours);
+#if OPT_SELECTFRAMERATE
+  g.rate_indirect       = WIMP_ICON_BUF(scratch, ic_display_rate);
+  g.rate_size           = WIMP_ICON_SIZE(scratch, ic_display_rate);
+#endif
+  g.title_indirect      = WIMP_TITLE_BUF(scratch);
+  g.title_size          = WIMP_TITLE_SIZE(scratch);
+  if ((e = _swix(Wimp_CreateWindow, _IN(1) | _OUT(0), scratch,
+                 &g.display_handle)) != NULL)
+    goto free_all;
+  window_settitle();
+
+  /* Mode window. */
+  if ((e = load_template(scratch, &indirect, indirect_end, WN_MODE)) != NULL)
+    goto free_all;
+  g.mode_indirect = WIMP_ICON_BUF(scratch, ic_mode_mode);
+  g.mode_size     = WIMP_ICON_SIZE(scratch, ic_mode_mode);
+  if ((e = _swix(Wimp_CreateWindow, _IN(1) | _OUT(0), scratch,
+                 &g.mode_handle)) != NULL)
+    goto free_all;
+
+  /* Info window. */
+  if ((e = load_template(scratch, &indirect, indirect_end, WN_INFO)) != NULL)
+    goto free_all;
+  patch_info_version(scratch);
+  e = _swix(Wimp_CreateWindow, _IN(1) | _OUT(0), scratch, &g.info_handle);
+
+free_all:
+  _swix(OS_Module, _IN(0) | _IN(2), ModHandReason_Free, scratch);
+  goto close;
+free_scratch:
+  _swix(OS_Module, _IN(0) | _IN(2), ModHandReason_Free, scratch);
+close:
+  _swix(Wimp_CloseTemplate, 0);
+  return e;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Window open / close / open-behind (were Window_Open/_Close/_OpenBehind).
+ * ----------------------------------------------------------------------- */
+void window_open(int *block)
+{
+  _swix(Wimp_OpenWindow, _IN(1), block);
+}
+
+void window_close(int *block)
+{
+  _swix(Wimp_CloseWindow, _IN(1), block);
+}
+
+/* Open window `handle` behind `behind`, positioned with its bottom-left at
+ * (x, y) and its existing size preserved (wimp_openstr offsets: visible area at
+ * words 1-4, behind handle at word 7). */
+_kernel_oserror *window_openbehind(int handle, int behind, int x, int y)
+{
+  int block[9];
+  int w, h;
+  _kernel_oserror *e;
+
+  block[0] = handle;
+  e = _swix(Wimp_GetWindowState, _IN(1), block);
+  if (e)
+    return e;
+
+  block[7] = behind;
+  w = block[3] - block[1];      /* x1 - x0 */
+  h = block[4] - block[2];      /* y1 - y0 */
+  block[1] = x;
+  block[2] = y;
+  block[3] = x + w;
+  block[4] = y + h;
+
+  return _swix(Wimp_OpenWindow, _IN(1), block);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Set the display window's title to the monitor name (was Window_SetTitle).
+ * ----------------------------------------------------------------------- */
+void window_settitle(void)
+{
+  char *name;
+  int outline[5];
+
+  if (_swix(SWI_ScreenModes_ReadInfo, _IN(0) | _OUT(0), 0, &name) == NULL)
+  {
+    /* Copy the monitor name into the title buffer, truncating to fit. */
+    char *dst = g.title_indirect;
+    int n = g.title_size;
+    while (n > 1 && *name)
+    {
+      *dst++ = *name++;
+      n--;
+    }
+    if (n >= 1)
+      *dst = '\0';
+  }
+  else
+  {
+    /* No monitor name available: fall back to the task banner. */
+    msgtrans_lookup("Title", g.title_indirect, g.title_size, NULL);
+  }
+
+  /* Force a redraw of the title bar. */
+  outline[0] = g.display_handle;
+  if (_swix(Wimp_GetWindowOutline, _IN(1), outline) == NULL)
+    _swix(Wimp_ForceRedraw, _INR(0,4), -1,
+          outline[1], outline[4] - 44, outline[3], outline[4]);
+}

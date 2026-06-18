@@ -24,6 +24,7 @@
 
 #include "kernel.h"
 #include "options.h"
+#include "modedefs.h"
 
 /* --- Resource file names (resolved via DisplayManager$$Path) ------------- */
 #define MESSAGES_FILE      "DisplayManager:Messages"
@@ -99,6 +100,25 @@ enum colour_item {
   mo_co_16M      = 9
 };
 
+/* --- Window icon numbers (was the ic_* EQUs in s/Icon) ------------------ */
+enum {
+  ic_display_ok         = 1,
+  ic_display_colbutton  = 3,
+  ic_display_colours    = 4,
+  ic_display_resolution = 5,
+  ic_display_cancel     = 6,
+  ic_display_resbutton  = 7,
+#if OPT_SELECTFRAMERATE
+  ic_display_rate       = 9,
+  ic_display_ratebutton = 10,
+#endif
+
+  ic_mode_mode          = 0,
+  ic_mode_ok            = 1,
+
+  ic_info_version       = 3
+};
+
 /* --- Sizes ------------------------------------------------------------- */
 #define MAX_BANNER_SIZE    60     /* max length of the task banner string  */
 
@@ -156,6 +176,12 @@ typedef struct display_state {
   unsigned char rate_count;
 #endif
   unsigned char menu_tick;
+
+  /* RAM menu areas built by menu_init (MessageTrans_MakeMenus): the iconbar
+   * menu (header + 2 items) and the colours menu (header + 10 items).  Sized
+   * with m_headersize=28, mi_size=24.  Word-aligned (int) for the Wimp. */
+  int   m_iconbarmenu[(28 + 24 * 2) / 4];
+  int   m_coloursmenu[(28 + 24 * 10) / 4];
 } display_state;
 
 /* The single persistent state instance (defined in c/module). */
@@ -170,6 +196,7 @@ extern void             mod_pollword(void);
 extern void             mod_shutdown(void);
 extern int              scanpalette(void);   /* non-zero => palette changed */
 extern int              mod_reporterror(_kernel_oserror *e, int flags);
+extern char            *mod_copystring(const char *src, char *dst, int size);
 
 /* c/msgtrans */
 extern _kernel_oserror *msgtrans_openfile(void);
@@ -178,5 +205,51 @@ extern _kernel_oserror *msgtrans_errorlookup(const _kernel_oserror *err,
                                              const void *p2, const void *p3);
 extern char            *msgtrans_lookup(const char *token, char *buf, int size,
                                         int *len);
+
+/* c/icon */
+extern _kernel_oserror *icon_init(void);
+extern void             icon_refresh(void);
+
+/* c/window */
+extern _kernel_oserror *window_init(void);
+extern void             window_open(int *block);
+extern void             window_close(int *block);
+extern _kernel_oserror *window_openbehind(int handle, int behind, int x, int y);
+extern void             window_settitle(void);
+
+/* c/mode */
+extern _kernel_oserror *mode_init(void);
+extern _kernel_oserror *mode_gettable(void);
+extern int              mode_getcurrent(void);
+extern _kernel_oserror *mode_getinfo(int spec, mode_info *mi);
+extern void             mode_testpalette(mode_info *mi);
+extern void             mode_setmodestring(int flags, int spec);
+extern void             mode_setwindowicons(unsigned char *mode, mode_info *mi);
+extern int              mode_descriptor_to_colourmenuitem(int flags,
+                                                          unsigned char *desc);
+extern _kernel_oserror *mode_findsubclass(int flags, int colours, int class,
+                                          int rate, subclass_result *out);
+extern _kernel_oserror *mode_changemode(void);
+extern _kernel_oserror *mode_wimpcommand(void);
+extern _kernel_oserror *mode_keypressed(int *block);
+#if OPT_LOADMODEFILES
+extern _kernel_oserror *mode_loadfile(const char *name);
+#endif
+
+/* c/menu */
+extern _kernel_oserror *menu_init(void);
+extern _kernel_oserror *menu_resolution(void);
+#if OPT_SELECTFRAMERATE
+extern _kernel_oserror *menu_rate(void);
+#endif
+extern void             menu_show(int *menu, int x, int y);
+extern _kernel_oserror *menu_selection(int *block);
+extern void             menu_deleted(void);
+
+/* c/mouse */
+extern _kernel_oserror *mouse_click(int *block);
+
+/* c/message */
+extern _kernel_oserror *message_received(int *block);
 
 #endif

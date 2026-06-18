@@ -1,0 +1,214 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Wimp message handling (was s/Message).  Deals with Message_MenuWarning (open
+ * the Mode dialogue as a submenu, showing the current mode), MenusDeleted,
+ * HelpRequest (interactive help), Quit, and - when LoadModeFiles is enabled -
+ * DataLoad / DataSave for mode-description files dragged to the iconbar.
+ *
+ * The incoming message lives in the Wimp poll block (a 256-byte int[64] in
+ * main()); replies are built in place in that block, reusing the sender's task
+ * handle and reference, exactly as the assembler did with its `user_data`.
+ */
+#include <stddef.h>
+#include <stdlib.h>
+
+#include "kernel.h"
+#include "swis.h"
+
+#include "Global/Variables.h"
+
+#include "modhead.h"
+#include "display.h"
+#include "modedefs.h"
+#include "wimpdefs.h"
+
+/* Reply to a message: yourref := myref, action := `action`, send back to the
+ * originating task (was Message_SendAck). */
+static _kernel_oserror *message_sendack(int action, int *block)
+{
+  block[MSW_YOURREF] = block[MSW_MYREF];
+  block[MSW_ACTION]  = action;
+  return _swix(Wimp_SendMessage, _INR(0,2), User_Message, block,
+               block[MSW_TASKHANDLE]);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Message_MenuWarning: about to open the Mode dialogue submenu.
+ * ----------------------------------------------------------------------- */
+static _kernel_oserror *msg_menuwarning(int *block)
+{
+  int submenu = block[MSW_DATA + 0];
+  int x       = block[MSW_DATA + 1];
+  int y       = block[MSW_DATA + 2];
+  mode_info mi;
+  _kernel_oserror *e;
+  int spec = mode_getcurrent();
+
+  e = mode_getinfo(spec, &mi);
+  if (e != NULL)
+    return e;
+  mode_testpalette(&mi);
+  mode_setmodestring(mi.flags, spec);
+
+  return _swix(Wimp_CreateSubMenu, _INR(1,3), submenu, x, y);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Message_HelpRequest: reply with interactive help text.
+ * ----------------------------------------------------------------------- */
+static _kernel_oserror *msg_helprequest(int *block)
+{
+  int window = block[MSW_HELP_WINDOW];
+  int item   = block[MSW_HELP_ICON];
+  int cat;
+  char token[8];
+  char *text;
+  int len = 0;
+
+  if (window == ICONBAR_WHANDLE)        { cat = 'B'; item = 0; }
+  else if (window == g.info_handle)     { cat = 'I'; item = 0; }
+  else if (window == g.display_handle)  { cat = 'D'; }
+  else if (window == g.mode_handle)     { cat = 'W'; }
+  else
+  {
+    /* A menu: which item is the pointer over, and which of our menus? */
+    int tree[8];
+    if (item < 0)
+      return NULL;                       /* not over a menu item */
+    if (_swix(Wimp_GetMenuState, _INR(0,1), 1, tree) != NULL)
+      return NULL;
+    item = tree[0];
+
+    if (g.menu_handle == (int)g.m_iconbarmenu)         cat = 'M';
+    else if (g.menu_handle == (int)g.m_coloursmenu)    cat = 'C';
+    else if (g.menu_handle == (int)g.m_resolutionmenu) cat = 'R';
+#if OPT_SELECTFRAMERATE
+    else if (g.menu_handle == (int)g.m_ratemenu)       cat = 'F';
+#endif
+    else
+      return NULL;
+  }
+
+  /* Build the help token "H<category><2 hex digits of item>". */
+  token[0] = 'H';
+  token[1] = (char)cat;
+  if (_swix(OS_ConvertHex2, _INR(0,2), item, token + 2, (int)sizeof(token) - 2)
+      != NULL)
+    return NULL;
+
+  /* Look the token up directly into the reply block; if it is missing, send
+   * nothing (as the assembler did). */
+  if (msgtrans_openfile() != NULL)
+    return NULL;
+  text = (char *)block + MSHELP_MESSAGE;
+  if (_swix(MessageTrans_Lookup, _INR(0,4) | _OUT(3),
+            g.message_file_block, token, text, 256 - MSHELP_MESSAGE, 0, &len)
+      != NULL)
+    return NULL;
+
+  block[MSW_SIZE] = (MSHELP_MESSAGE + len + 4) & ~3;
+  return message_sendack(Message_HelpReply, block);
+}
+
+#if OPT_LOADMODEFILES
+/* Delete the temporary scrap file if this transfer used it (was delete_scrap). */
+static void delete_scrap(int yourref)
+{
+  if (g.scrap_ref == yourref)
+  {
+    g.scrap_ref = -1;
+    _swix(OS_CLI, _IN(0), "%Delete <Wimp$Scrap>");
+  }
+}
+
+/* Message_DataLoad: a mode-description file has been dropped on us. */
+static _kernel_oserror *msg_dataload(int *block)
+{
+  int yourref = block[MSW_YOURREF];     /* note before sendack overwrites it */
+  int ftype   = block[MSW_DT_FILETYPE];
+  _kernel_oserror *e;
+
+  if (ftype != FileType_Text && ftype != FileType_EDID)
+    return msgtrans_errorlookup(Modes_InvalidFile, 0, 0, 0, 0);
+
+  e = message_sendack(Message_DataLoadAck, block);
+  if (e == NULL)
+    e = mode_loadfile((char *)block + MSDT_FILENAME);
+
+  delete_scrap(yourref);
+  return e;
+}
+
+/* Message_DataSave: ask the sender to save to <Wimp$Scrap> so we can load it. */
+static _kernel_oserror *msg_datasave(int *block)
+{
+  int exists = 0;
+  _kernel_oserror *e;
+
+  if (block[MSW_DT_FILETYPE] != FileType_Text)
+    return NULL;                         /* only text files */
+
+  /* Make sure Wimp$Scrap is set (R2 = 0 out => not defined). */
+  _swix(OS_ReadVarVal, _INR(0,4) | _OUT(2),
+        "Wimp$Scrap", 0, -1, 0, VarType_Expanded, &exists);
+  if (exists == 0)
+    return msgtrans_errorlookup(Modes_NoScrap, 0, 0, 0, 0);
+
+  block[MSW_DT_FILESIZE] = -1;
+  block[MSW_SIZE] = (MSDT_FILENAME + (int)sizeof("<Wimp$Scrap>") + 3) & ~3;
+  mod_copystring("<Wimp$Scrap>", (char *)block + MSDT_FILENAME, -1);
+
+  e = message_sendack(Message_DataSaveAck, block);
+  if (e == NULL)
+    g.scrap_ref = block[MSW_MYREF];      /* Wimp assigned us a fresh myref */
+  return e;
+}
+#endif
+
+/* ----------------------------------------------------------------------- *
+ *  Message dispatcher (was Message_Received / Message_Recorded).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *message_received(int *block)
+{
+  switch (block[MSW_ACTION])
+  {
+  case Message_MenuWarning:
+    return msg_menuwarning(block);
+
+  case Message_MenusDeleted:
+    menu_deleted();
+    return NULL;
+
+  case Message_HelpRequest:
+    return msg_helprequest(block);
+
+#if OPT_LOADMODEFILES
+  case Message_DataLoad:
+    return msg_dataload(block);
+
+  case Message_DataSave:
+    return msg_datasave(block);
+#endif
+
+  case Message_Quit:
+    mod_shutdown();
+    exit(EXIT_SUCCESS);                   /* was OS_Exit; does not return */
+
+  default:
+    return NULL;
+  }
+}

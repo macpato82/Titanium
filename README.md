@@ -40,24 +40,30 @@ and build cleanly:
 Build-verification also caught and fixed real port bugs (e.g. missing
 `<stddef.h>`/`NULL` includes in Gadgets' `c/Utils` and `c/Font`).
 
-### DisplayManager — whole-module assembler→C rewrite: **in progress**
+### DisplayManager — whole-module assembler→C rewrite: **complete (build-verified)**
 The screen-mode chooser (`Video/UserI/Display`, module `DisplayManager`) was a
-pure-assembler Wimp application (12 `s/` files, ~4,285 lines). It is being
+pure-assembler Wimp application (12 `s/` files, ~4,285 lines). It has been
 rewritten in C in place, Apache-2.0 retained, with a CMunge header replacing the
-hand-written module header and the build switched `AAsmModule`→`CModule`. The
-design (file→C map, state struct, poll loop, the mode-enumeration core, and a
-six-step port order) is in
+hand-written module header and the build switched `AAsmModule`→`CModule`
+(v0.44→0.45). The design (file→C map, state struct, poll loop, the
+mode-enumeration core, and the six-step port order) is in
 [Display/DESIGN.md](RiscOS/Sources/Video/UserI/Display/DESIGN.md).
 
 | Step | Scope | State |
 |------|-------|-------|
 | 1 | Module skeleton: CMunge header (`module-is-runnable`, `error-base`/`error-identifiers`), state struct, lifecycle, Wimp poll loop | **build-verified** |
 | 2 | Message handling (`c/msgtrans`): file open/lookup/error-lookup, real task banner, error reporting | **build-verified** |
-| 3–6 | windows + iconbar icon → mode enumerate/sort/select (the core) → menus → mouse/messages | pending |
+| 3 | Windows + iconbar icon (`c/window`, `c/icon`) | **build-verified** |
+| 4 | Mode enumerate / sort / select core (`c/mode`, the 1,624-line heart) | **build-verified** |
+| 5 | Menus (`c/menu`): iconbar / colours / resolution / rate, MakeMenus templates, selection decode | **build-verified** |
+| 6 | Mouse clicks (`c/mouse`) + Wimp messages (`c/message`: menu warning, help, quit, data transfer) | **build-verified** |
 
 The original module's header was disassembled (gerph's `riscos-disassemble`) to
 baseline the port: the rebuilt module's runnable entry, command, and seven
-service calls match the shipped module exactly.
+service calls match the shipped module exactly. The 12 assembler `s/` files have
+been removed (preserved in git history). The standalone (`-DSTANDALONE`) RAM
+build's ResourceFS registration is the one deliberately un-ported piece — the
+ROM build serves its resources through the ROM resource filing system instead.
 
 ### Other areas
 Toolbox object modules and the ToolboxLib client library are reindented

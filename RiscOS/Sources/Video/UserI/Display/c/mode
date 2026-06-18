@@ -1,0 +1,954 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Screen-mode enumeration, sorting, selection and application (was s/Mode).
+ * The heart of the module: builds the sorted/class/menu lists from the OS mode
+ * enumeration, maps pixel formats to colour-menu items, finds the best matching
+ * mode for a selection (with downgrade/upgrade), and applies it via *WimpMode.
+ *
+ * Note on mode_testpalette: the assembler had a PaletteV fast path with an
+ * OS_ReadPalette fallback; this port uses the OS_ReadPalette path (the same
+ * greyscale test, identical result) for clarity.
+ */
+#include <stddef.h>
+
+#include "kernel.h"
+#include "swis.h"
+
+#include "Global/ModHand.h"
+
+#include "modhead.h"
+#include "display.h"
+#include "modedefs.h"
+#include "wimpdefs.h"
+
+/* --- Colour-item lookup tables (were the DCB tables in s/Mode) ----------- */
+static const unsigned char log2bpp_to_greyitem[7] = {
+  mo_co_mono, mo_co_grey4, mo_co_grey16, mo_co_grey256, mo_co_32K, mo_co_16M, mo_co_16M
+};
+static const unsigned char log2bpp_to_colouritem[7] = {
+  mo_co_mono, mo_co_grey4, mo_co_colour16, mo_co_colour256, mo_co_32K, mo_co_16M, mo_co_16M
+};
+
+/* Colour menu item -> pixel format (was colours_to_pixelformat). */
+static const gvpixelformat colours_to_pixelformat[COLOURS_COUNT] = {
+  {     1, 0,                  0 },  /* mo_co_mono     */
+  {     3, 0,                  1 },  /* mo_co_grey4    */
+  {    15, 0,                  2 },  /* mo_co_grey16   */
+  {    15, 0,                  2 },  /* mo_co_colour16 */
+  {   255, ModeFlag_FullPalette, 3 },/* mo_co_grey256  */
+  {   255, ModeFlag_FullPalette, 3 },/* mo_co_colour256*/
+  {  4095, 0,                  4 },  /* mo_co_4K       */
+  { 65535, 0,                  4 },  /* mo_co_32K      */
+  { 65535, ModeFlag_64k,       4 },  /* mo_co_64K      */
+  {    -1, 0,                  5 }   /* mo_co_16M      */
+};
+
+/* Scratch mode specifier built by mode_buildspecifier (used immediately). */
+static int specbuf[12];
+
+/* ----------------------------------------------------------------------- *
+ *  Pixel-format helpers
+ * ----------------------------------------------------------------------- */
+
+/* log2bpp -> pixel format (was Mode_PixelFormatFromLog2BPP). */
+static void mode_pixelformat_from_log2bpp(int log2bpp, gvpixelformat *pf)
+{
+  int bpp = 1 << log2bpp;
+  pf->log2bpp = log2bpp;
+  pf->modeflags = (log2bpp == 3) ? ModeFlag_FullPalette : 0;
+  pf->ncolour = (bpp >= 32) ? -1 : (1 << bpp) - 1;
+}
+
+/* Get a descriptor's pixel format (new: copy; old: derive from log2bpp). */
+static void get_pf(unsigned char *d, gvpixelformat *pf)
+{
+  if (MD_isnew(d))
+    *pf = *MD_new_format(d);
+  else
+    mode_pixelformat_from_log2bpp(MD_old_depth(d), pf);
+}
+
+/* Can this pixel format be represented as a plain pixel depth?
+ * (was Mode_IsOldPixelFormat; returns non-zero for "yes".) */
+static int mode_is_old_pixelformat(const gvpixelformat *pf)
+{
+  int expected_flags, bpp, expected_ncolour;
+  if (pf->log2bpp > 5)
+    return 0;
+  expected_flags = (pf->log2bpp == 3) ? ModeFlag_FullPalette : 0;
+  if (pf->modeflags != expected_flags)
+    return 0;
+  bpp = 1 << pf->log2bpp;
+  expected_ncolour = (bpp >= 32) ? -1 : (1 << bpp) - 1;
+  return pf->ncolour == expected_ncolour;
+}
+
+/* Pixel format -> colours menu item (was Mode_PixelFormatToMenuItem). */
+static int mode_pixelformat_to_menuitem(int flags, const gvpixelformat *pf)
+{
+  int grey = (flags & f_greylevel) != 0;
+  int log2bpp = pf->log2bpp;
+  const unsigned char *tbl = grey ? log2bpp_to_greyitem : log2bpp_to_colouritem;
+  int item = tbl[log2bpp];
+
+  if (grey || log2bpp != 4)
+    return item;
+
+  /* 16bpp colour needs extra logic to distinguish 4K / 32K / 64K. */
+  if (pf->ncolour + 1 == 4096)
+    return mo_co_4K;
+  if (pf->modeflags & ModeFlag_64k)
+    return mo_co_64K;
+  return item;                 /* mo_co_32K */
+}
+
+/* Mode descriptor -> colours menu item (was Mode_DescriptorToColourMenuItem). */
+int mode_descriptor_to_colourmenuitem(int flags, unsigned char *desc)
+{
+  gvpixelformat pf;
+  get_pf(desc, &pf);
+  return mode_pixelformat_to_menuitem(flags, &pf);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Current mode / info / palette
+ * ----------------------------------------------------------------------- */
+
+/* Return the current mode specifier (was Mode_GetCurrent). */
+int mode_getcurrent(void)
+{
+  int spec = 0;
+#if OPT_MEDUSA
+  _swix(OS_ScreenMode, _IN(0) | _OUT(1), ScreenModeReason_ReturnMode, &spec);
+#else
+  _swix(OS_Byte, _IN(0) | _OUT(2), 135, &spec);
+#endif
+  return spec;
+}
+
+/* Get resolution / pixel format / rate for a mode (was Mode_GetInfo). */
+_kernel_oserror *mode_getinfo(int spec, mode_info *mi)
+{
+  _kernel_oserror *e;
+
+  if (spec >= 256)
+  {
+    unsigned char *s = (unsigned char *)spec;
+    int *var;
+
+    mode_pixelformat_from_log2bpp(*(int *)(s + 12), &mi->pf);  /* spec_depth */
+
+    for (var = (int *)(s + 20); var[0] != -1; var += 2)        /* spec_vars  */
+    {
+      if (var[0] == VduExt_NColour)
+        mi->pf.ncolour = var[1];
+      else if (var[0] == VduExt_ModeFlags)
+        mi->pf.modeflags = var[1] & ModeFlag_Relevant;
+    }
+
+    mi->xres = *(int *)(s + 4);
+    mi->yres = *(int *)(s + 8);
+    mi->rate = *(int *)(s + 16);
+    return NULL;
+  }
+
+  /* Mode number: read the variables. */
+  if ((e = _swix(OS_ReadModeVariable, _INR(0,1) | _OUT(2),
+                 spec, VduExt_XWindLimit, &mi->xres)) != NULL) return e;
+  mi->xres += 1;
+  if ((e = _swix(OS_ReadModeVariable, _INR(0,1) | _OUT(2),
+                 spec, VduExt_YWindLimit, &mi->yres)) != NULL) return e;
+  mi->yres += 1;
+  if ((e = _swix(OS_ReadModeVariable, _INR(0,1) | _OUT(2),
+                 spec, VduExt_Log2BPP, &mi->pf.log2bpp)) != NULL) return e;
+  if ((e = _swix(OS_ReadModeVariable, _INR(0,1) | _OUT(2),
+                 spec, VduExt_NColour, &mi->pf.ncolour)) != NULL) return e;
+  if ((e = _swix(OS_ReadModeVariable, _INR(0,1) | _OUT(2),
+                 spec, VduExt_ModeFlags, &mi->pf.modeflags)) != NULL) return e;
+  mi->pf.modeflags &= ModeFlag_Relevant;
+  mi->rate = -1;
+  return NULL;
+}
+
+/* Determine whether the current palette is grey or colour (was
+ * Mode_TestPalette).  Updates g.flags and mi->flags. */
+void mode_testpalette(mode_info *mi)
+{
+  unsigned char fl = g.flags;
+  int log2bpp = mi->pf.log2bpp;
+
+  if (log2bpp > 3)
+  {
+    fl &= ~f_greylevel;        /* high colour: assume not greyscale */
+  }
+  else
+  {
+    int ncolours = 1 << (1 << log2bpp);
+    int i;
+    if (ncolours > 256)
+      ncolours = 256;
+    fl |= f_greylevel;         /* assume grey until proven otherwise */
+    for (i = ncolours - 1; i >= 0; i--)
+    {
+      unsigned int entry;
+      if (_swix(OS_ReadPalette, _INR(0,1) | _OUT(2), i, 17, &entry))
+        break;
+      /* entry = &BBGGRRxx; grey iff BB == GG == RR */
+      if ((((entry ^ (entry << 8)) >> 16) & 0xFFFF) != 0)
+      {
+        fl &= ~f_greylevel;
+        break;
+      }
+    }
+  }
+
+  g.flags = fl;
+  mi->flags = fl;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Build a mode specifier from a descriptor (was Mode_BuildSpecifier).
+ *  Returns a pointer to the (static) specifier; valid until the next call.
+ * ----------------------------------------------------------------------- */
+static int *mode_buildspecifier(int flags, unsigned char *desc)
+{
+  gvpixelformat tmp;
+  const gvpixelformat *pf;
+  int rate, modeflags;
+
+  if (MD_isnew(desc))
+  {
+    pf = MD_new_format(desc);
+    rate = MD_new_rate(desc);
+  }
+  else
+  {
+    mode_pixelformat_from_log2bpp(MD_old_depth(desc), &tmp);
+    pf = &tmp;
+    rate = MD_old_rate(desc);
+  }
+
+  modeflags = pf->modeflags;
+  if (flags & f_greylevel)
+    modeflags |= ModeFlag_GreyscalePalette;
+
+  specbuf[0] = 1;                  /* specifier flags        */
+  specbuf[1] = MD_xres(desc);
+  specbuf[2] = MD_yres(desc);
+  specbuf[3] = pf->log2bpp;        /* depth                  */
+  specbuf[4] = rate;
+  specbuf[5] = VduExt_NColour;     /* variable: NColour      */
+  specbuf[6] = pf->ncolour;
+  specbuf[7] = VduExt_ModeFlags;   /* variable: ModeFlags    */
+  specbuf[8] = modeflags;
+  specbuf[9] = -1;                 /* terminator             */
+  return specbuf;
+}
+
+#if OPT_SORTONPIXELSHAPE
+/* Mark a descriptor as square-pixel if it has equal eigen factors (was
+ * Mode_PixelShape). */
+static void mode_pixelshape(unsigned char *desc)
+{
+  int *spec = mode_buildspecifier(0, desc);
+  int eigx = 0, eigy = 0;
+  _swix(OS_ReadModeVariable, _INR(0,1) | _OUT(2), (int)spec, VduExt_XEigFactor, &eigx);
+  _swix(OS_ReadModeVariable, _INR(0,1) | _OUT(2), (int)spec, VduExt_YEigFactor, &eigy);
+  if (eigx == eigy)
+    MD_flags(desc) |= flags_squarepixel;
+}
+#endif
+
+/* ----------------------------------------------------------------------- *
+ *  Sorting comparisons
+ * ----------------------------------------------------------------------- */
+
+/* Compare two descriptors by pixel format then frame rate (was
+ * Mode_ComparePixelFormatsAndFramerates).  Returns <0 if d2 should sort first
+ * (i.e. swap), >0 if d1 first, 0 if identical for sort purposes. */
+static int mode_comparepixelformats(unsigned char *a, unsigned char *b)
+{
+  gvpixelformat pa, pb;
+  int itemA, itemB, rateA, rateB, subA, subB;
+
+  get_pf(a, &pa);
+  get_pf(b, &pb);
+
+  itemA = mode_pixelformat_to_menuitem(0, &pa);
+  itemB = mode_pixelformat_to_menuitem(0, &pb);
+  if (itemA != itemB)
+    return (itemA < itemB) ? -1 : 1;
+
+  rateA = MD_rate(a);
+  rateB = MD_rate(b);
+  if (rateA != rateB)
+    return (rateA < rateB) ? -1 : 1;
+
+  subA = pa.modeflags & ModeFlag_DataFormatSub_Mask;
+  subB = pb.modeflags & ModeFlag_DataFormatSub_Mask;
+  if (subB != subA)
+    return (subB < subA) ? -1 : 1;
+
+  return 0;
+}
+
+/* Are two descriptors identical apart from RGB/BGR order or alpha mode?
+ * (was Mode_CheckIdentical; returns non-zero for "yes".) */
+static int mode_checkidentical(unsigned char *a, unsigned char *b)
+{
+  gvpixelformat pa, pb;
+  char *na, *nb;
+
+#if OPT_SORTONPIXELSHAPE
+  if (((MD_flags(a) ^ MD_flags(b)) & flags_squarepixel) != 0)
+    return 0;
+#endif
+
+  if (MD_xres(a) != MD_xres(b) || MD_yres(a) != MD_yres(b))
+    return 0;
+
+  get_pf(a, &pa);
+  get_pf(b, &pb);
+  if (mode_pixelformat_to_menuitem(0, &pa) != mode_pixelformat_to_menuitem(0, &pb))
+    return 0;
+  if (MD_rate(a) != MD_rate(b))
+    return 0;
+
+  na = MD_name(a);
+  nb = MD_name(b);
+  while (*na == *nb)
+  {
+    if (*na == '\0')
+      return 1;
+    na++;
+    nb++;
+  }
+  return 0;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Sort the enumerated modes and build the class list (was Mode_SortList).
+ * ----------------------------------------------------------------------- */
+static _kernel_oserror *mode_sortlist(void)
+{
+  unsigned char **sorted = (unsigned char **)g.mode_sortedlist;
+  unsigned char ***classlist;
+
+  if (sorted == NULL)
+    return NULL;
+
+  /* Build a list of pointers to the valid (accepted) modes. */
+  {
+    unsigned char *t = (unsigned char *)g.mode_table;
+    int count = g.mode_count;
+    unsigned char **w = sorted;
+
+    while (count-- > 0)
+    {
+      int size = MD_size(t);
+      int flags_lo = MD_flags(t) & 0xFF;
+      int use = 0;
+
+      if (flags_lo == 1)
+      {
+        use = 1;
+      }
+      else
+      {
+        gvpixelformat *pf = MD_new_format(t);
+        if (pf->log2bpp <= 5 &&
+            (pf->modeflags & ModeFlag_DataFormatFamily_Mask) == ModeFlag_DataFormatFamily_RGB)
+          use = 1;
+      }
+
+      if (use)
+      {
+        *w++ = t;
+#if OPT_SORTONPIXELSHAPE
+        mode_pixelshape(t);
+#endif
+      }
+      t += size;
+    }
+    *w = NULL;
+  }
+
+  /* Bubble sort: increasing X, increasing Y, then pixel format / frame rate
+   * (and non-square before square pixels). */
+  for (;;)
+  {
+    int swaps = 0;
+    unsigned char **p = sorted;
+
+    while (p[0] != NULL && p[1] != NULL)
+    {
+      unsigned char *a = p[0], *b = p[1];
+      int swap = 0;
+
+#if OPT_SORTONPIXELSHAPE
+      int sa = MD_flags(a) & flags_squarepixel;
+      int sb = MD_flags(b) & flags_squarepixel;
+      if (sa != sb)
+      {
+        swap = (sa == (int)flags_squarepixel);   /* square first -> swap */
+      }
+      else
+#endif
+      if (MD_xres(b) < MD_xres(a))
+        swap = 1;
+      else if (MD_xres(b) == MD_xres(a))
+      {
+        if (MD_yres(b) < MD_yres(a))
+          swap = 1;
+        else if (MD_yres(b) == MD_yres(a))
+          swap = (mode_comparepixelformats(a, b) < 0);
+      }
+
+      if (swap)
+      {
+        p[0] = b;
+        p[1] = a;
+        swaps++;
+      }
+      p++;
+    }
+
+    if (!swaps)
+      break;
+  }
+
+  /* Discard modes identical to their predecessor apart from RGB/BGR/alpha. */
+  {
+    unsigned char **dst = sorted;
+    unsigned char **src = sorted + 1;
+    if (dst[0] != NULL)
+    {
+      while (src[0] != NULL)
+      {
+        if (mode_checkidentical(dst[0], src[0]))
+        {
+          src++;                 /* drop src */
+        }
+        else
+        {
+          dst++;
+          dst[0] = src[0];
+          src++;
+        }
+      }
+      dst[1] = NULL;             /* terminate after the last kept entry */
+    }
+  }
+
+  /* Build the class list: one entry per distinct resolution. */
+  classlist = (unsigned char ***)g.mode_classlist;
+  {
+    unsigned char **p = sorted;
+    unsigned char ***c = classlist;
+    int prev_x = -1, prev_y = -1;
+
+    for (;;)
+    {
+      unsigned char *desc = p[0];
+      if (desc == NULL)
+      {
+        *c = NULL;             /* terminate class list */
+#if OPT_SORTONPIXELSHAPE
+        g.class_count = (unsigned char)(c - classlist);
+#endif
+        break;
+      }
+      if (MD_xres(desc) != prev_x || MD_yres(desc) != prev_y)
+      {
+        *c++ = p;
+        prev_x = MD_xres(desc);
+        prev_y = MD_yres(desc);
+      }
+      p++;
+    }
+  }
+
+  return NULL;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Enumerate the available modes and build the tables (was Mode_GetTable).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *mode_gettable(void)
+{
+  _kernel_oserror *e = NULL;
+  int count, datasize, total, menusize, n1;
+  void *block;
+  unsigned char *base;
+
+  if (g.mode_space)
+  {
+    _swix(OS_Module, _IN(0) | _IN(2), ModHandReason_Free, g.mode_space);
+    g.mode_space = NULL;
+  }
+
+#if OPT_MEDUSA
+  {
+    int r2 = 0, r7 = 0;
+    e = _swix(OS_ScreenMode, _IN(0) | _IN(2) | _IN(6) | _IN(7) | _OUT(2) | _OUT(7),
+              ScreenModeReason_EnumerateModes, 0, 0, 0, &r2, &r7);
+    if (e)
+      return e;
+    count = -r2;
+    datasize = (3 - r7) & ~3;          /* r7 = -size; word-align */
+  }
+#endif
+
+  g.mode_count = count;
+  if (count == 0)
+    goto zero;
+
+  menusize = count * 24 + 28;          /* mode_count*mi_size + m_headersize */
+  g.m_resolutionsize = menusize;
+  total = menusize;
+#if OPT_SELECTFRAMERATE
+  g.m_ratesize = menusize;
+  total += menusize;
+#endif
+  total += datasize;                   /* mode table */
+  total += 3 * (count + 1) * 4;        /* sorted + class + menu lists */
+
+  e = _swix(OS_Module, _IN(0) | _IN(3) | _OUT(2), ModHandReason_Claim, total, &block);
+  if (e)
+    return e;
+
+  base = block;
+  n1 = (count + 1) * 4;
+  g.mode_space      = block;           /* == mode_sortedlist */
+  g.mode_sortedlist = base;
+  g.mode_classlist  = base + n1;
+  g.mode_menulist   = base + n1 * 2;
+  g.mode_table      = base + n1 * 3;
+  g.m_resolutionmenu = base + n1 * 3 + datasize;
+#if OPT_SELECTFRAMERATE
+  g.m_ratemenu = (char *)g.m_resolutionmenu + g.m_resolutionsize;
+#endif
+
+#if OPT_MEDUSA
+  {
+    int written = 0;
+    e = _swix(OS_ScreenMode, _IN(0) | _IN(2) | _IN(6) | _IN(7) | _OUT(1),
+              ScreenModeReason_EnumerateModes, 0, g.mode_table, datasize, &written);
+    if (e)
+      goto fail;
+    if (written == 0)
+    {
+      e = msgtrans_errorlookup(Modes_CantEnumerate, 0, 0, 0, 0);
+      goto fail;
+    }
+  }
+#endif
+
+  e = mode_sortlist();
+  if (e)
+    goto fail;
+  return NULL;
+
+fail:
+  if (g.mode_space)
+    _swix(OS_Module, _IN(0) | _IN(2), ModHandReason_Free, g.mode_space);
+zero:
+  g.mode_space = NULL;
+  g.mode_sortedlist = NULL;
+  g.mode_classlist = NULL;
+  g.mode_menulist = NULL;
+  g.mode_table = NULL;
+  g.m_resolutionmenu = NULL;
+#if OPT_SELECTFRAMERATE
+  g.m_ratemenu = NULL;
+#endif
+  return e;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Find a mode matching a selection, downgrading/upgrading as allowed
+ *  (was Mode_FindSubClass).  flags: bit0 = downgrade class, bit1 = downgrade
+ *  colours, bit2 = allow modes not on menus.  Always fills *out; returns an
+ *  error if nothing suitable was found.
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *mode_findsubclass(int flags, int colours, int class,
+                                   int rate, subclass_result *out)
+{
+  unsigned char ***classlist = (unsigned char ***)g.mode_classlist;
+  unsigned char **subclass = (unsigned char **)-1;
+  unsigned char *mode = MODE_NONE;
+  int start_colours = colours, start_class = class;
+  int step = -1;
+
+  out->subclass = subclass;
+  out->mode = MODE_NONE;
+  out->colours = colours;
+  out->class = class;
+
+  if (colours == 0xFF || class == 0xFF)
+    goto error;
+
+  /* If not allowing non-menu modes, see what we are starting from. */
+  if (!(flags & 4) && classlist != NULL)
+  {
+    unsigned char *desc = classlist[class][0];
+    if (MD_name(desc)[0] == '\0')
+      flags |= 4;                        /* starting mode not on menu */
+  }
+
+  for (;;)                               /* downgrade loop (label 10) */
+  {
+    const gvpixelformat *want = &colours_to_pixelformat[colours];
+    unsigned char **cl   = classlist ? classlist[class]     : NULL;
+    unsigned char **next = classlist ? classlist[class + 1] : NULL;
+    unsigned char *stop  = next ? next[0] : NULL;
+    unsigned char **p;
+
+    if (cl == NULL)
+      goto error;
+
+    for (p = cl; ; )                     /* scan this class (label 30) */
+    {
+      unsigned char *desc = *p++;
+      if (desc == stop)
+        break;                           /* end of class -> downgrade */
+
+      if (!MD_isnew(desc))
+      {
+        /* Old format descriptor. */
+        if (!(flags & 4) && MD_old_name(desc)[0] == '\0')
+          continue;
+        if (!mode_is_old_pixelformat(want))
+          continue;
+        if (MD_old_depth(desc) != want->log2bpp)
+          continue;
+
+        if (subclass == (unsigned char **)-1)
+          subclass = p - 1;
+        if (rate == -1 || MD_old_rate(desc) == rate)
+        {
+          mode = desc;
+          out->colours = colours;
+          out->class = class;
+          goto found;
+        }
+        continue;
+      }
+      else
+      {
+        /* New format descriptor (fuzzy: ignore RGB order / alpha). */
+        gvpixelformat *mf = MD_new_format(desc);
+        if (!(flags & 4) && MD_new_name(desc)[0] == '\0')
+          continue;
+        if (mf->ncolour != want->ncolour)
+          continue;
+        if (((mf->modeflags ^ want->modeflags) & (ModeFlag_FullPalette | ModeFlag_64k)) != 0)
+          continue;
+        if (mf->log2bpp != want->log2bpp)
+          continue;
+
+        if (subclass == (unsigned char **)-1)
+          subclass = p - 1;
+        if (rate == -1 || MD_new_rate(desc) == rate)
+        {
+          mode = desc;
+          out->colours = colours;
+          out->class = class;
+          goto found;
+        }
+        continue;
+      }
+    }
+
+    /* label 40: downgrade */
+    if (!(flags & 3))
+      goto error;
+
+    if (flags & 2)
+    {
+      /* Downgrade colours (label 50). */
+      for (;;)
+      {
+        colours += step;
+        if (colours == mo_co_colour16 || colours == mo_co_grey256)
+          colours += step;
+        if (colours < 0)
+        {
+          colours = start_colours;
+          step = 1;
+          continue;
+        }
+        break;
+      }
+      if (colours == COLOURS_COUNT)
+        goto error;
+    }
+    else
+    {
+      /* Downgrade class. */
+#if OPT_SORTONPIXELSHAPE
+      class--;
+      if (class < 0)
+        class = g.class_count - 1;
+      if (class == start_class)
+        goto error;
+#else
+      class += step;
+      if (class < 0)
+      {
+        class = start_class;
+        step = 1;
+        class += step;
+      }
+#endif
+    }
+  }
+
+found:
+  out->subclass = subclass;
+  out->mode = mode;
+  return NULL;
+
+error:
+  return msgtrans_errorlookup(Modes_Unsupported, 0, 0, 0, 0);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Set the menu selections / mode to match a resolution + depth
+ *  (was Mode_SetSelection).  Returns the matching descriptor (or MODE_NONE).
+ * ----------------------------------------------------------------------- */
+static unsigned char *mode_setselection(mode_info *mi)
+{
+  unsigned char ***classlist = (unsigned char ***)g.mode_classlist;
+  subclass_result r;
+  int class = 0xFF;
+  int colours;
+
+  if (classlist != NULL)
+  {
+    int i;
+    for (i = 0; ; i++)
+    {
+      unsigned char **cl = classlist[i];
+      unsigned char *desc;
+      if (cl == NULL)
+        break;
+      desc = cl[0];
+      if (MD_xres(desc) == mi->xres && MD_yres(desc) == mi->yres)
+      {
+        class = i;
+        break;
+      }
+    }
+  }
+
+  colours = mode_pixelformat_to_menuitem(mi->flags, &mi->pf);
+  mode_findsubclass(4, colours, class, mi->rate, &r);   /* error ignored */
+
+  g.selected_subclass = r.subclass;
+  g.selected_colours = (unsigned char)r.colours;
+  g.selected_class = (unsigned char)r.class;
+  g.selected_mode = r.mode;
+  return r.mode;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Set the display window's colour / resolution / rate icons
+ *  (was Mode_SetWindowIcons).
+ * ----------------------------------------------------------------------- */
+void mode_setwindowicons(unsigned char *mode, mode_info *mi)
+{
+  int sel[2];
+  int rate;
+
+  /* Colours icon, via Wimp_DecodeMenu on the colours menu. */
+  sel[0] = g.selected_colours;
+  sel[1] = -1;
+  if (_swix(Wimp_DecodeMenu, _INR(0,3), 0, g.m_coloursmenu, sel, g.colours_indirect))
+    return;
+
+  /* Resolution icon. */
+  if (mode != MODE_NONE)
+  {
+    char *name = MD_name(mode);
+    if (*name != '\0')
+    {
+      mod_copystring(name, g.resolution_indirect, g.resolution_size);
+      goto rate_icon;
+    }
+    mi->xres = MD_xres(mode);        /* blank name: build from descriptor */
+    mi->yres = MD_yres(mode);
+  }
+  {
+    char *p = g.resolution_indirect;
+    char *end = p + g.resolution_size;
+    _swix(OS_ConvertCardinal4, _INR(0,2) | _OUT(1), mi->xres, p, (int)(end - p), &p);
+    p = mod_copystring(" x ", p, (int)(end - p));
+    _swix(OS_ConvertCardinal4, _INR(0,2), mi->yres, p, (int)(end - p));
+  }
+
+rate_icon:
+  rate = (mode != MODE_NONE) ? MD_rate(mode) : mi->rate;
+
+#if OPT_SELECTFRAMERATE
+  if (rate == -1)
+  {
+    msgtrans_lookup("Unknown", g.rate_indirect, g.rate_size, NULL);
+  }
+  else
+  {
+    char *p = g.rate_indirect;
+    char *end = p + g.rate_size;
+    _swix(OS_ConvertCardinal4, _INR(0,2) | _OUT(1), rate, p, (int)(end - p), &p);
+    mod_copystring("Hz", p, (int)(end - p));
+  }
+#else
+  if (rate != -1)
+  {
+    /* Append " (NNHz)" to the resolution string. */
+    char *p = g.resolution_indirect;
+    char *end = p + g.resolution_size;
+    while (*p)
+      p++;
+    p = mod_copystring(" (", p, (int)(end - p));
+    _swix(OS_ConvertCardinal4, _INR(0,2) | _OUT(1), rate, p, (int)(end - p), &p);
+    mod_copystring("Hz)", p, (int)(end - p));
+  }
+#endif
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Set the mode dialogue's mode-string icon (was Mode_SetModeString).
+ * ----------------------------------------------------------------------- */
+void mode_setmodestring(int flags, int spec)
+{
+  (void)flags;
+
+  if (spec >= 256)
+  {
+    int remaining = 0;
+    if (_swix(OS_ScreenMode, _INR(0,3) | _OUT(3),
+              ScreenModeReason_ModeSpecifierToString, spec,
+              g.mode_indirect, g.mode_size, &remaining) != NULL)
+      remaining = -1;
+    if (remaining < 0)
+      g.mode_indirect[0] = '\0';   /* overflow / error: terminate */
+  }
+  else
+  {
+    _swix(OS_ConvertCardinal4, _INR(0,2), spec, g.mode_indirect, g.mode_size);
+  }
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Apply the mode string in the dialogue via *WimpMode (was Mode_WimpCommand).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *mode_wimpcommand(void)
+{
+  char cmd[256];
+  char *p = mod_copystring("WimpMode ", cmd, sizeof(cmd));
+  mod_copystring(g.mode_indirect, p, (int)(cmd + sizeof(cmd) - p));
+
+  if (_swix(OS_CLI, _IN(0), cmd) != NULL)
+    return msgtrans_errorlookup(Modes_InvalidMode, 0, 0, 0, 0);
+  return NULL;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Change to the selected mode (was Mode_ChangeMode).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *mode_changemode(void)
+{
+  unsigned char *mode = g.selected_mode;
+  int colours = g.selected_colours;
+  int flags;
+  int *spec;
+
+  if (mode == MODE_NONE)
+  {
+    subclass_result r;
+    mode_findsubclass(4, colours, g.selected_class, -1, &r);   /* error ignored */
+    if (r.mode == MODE_NONE)
+      return msgtrans_errorlookup(Modes_Unsupported, 0, 0, 0, 0);
+    mode = r.mode;
+  }
+
+  flags = (colours == mo_co_grey16 || colours == mo_co_grey256) ? f_greylevel : 0;
+  spec = mode_buildspecifier(flags, mode);
+  mode_setmodestring(flags, (int)spec);
+  return mode_wimpcommand();
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Handle a key press in the mode dialogue (was Mode_KeyPressed).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *mode_keypressed(int *block)
+{
+  int handle = block[0];
+  int chr = block[6];          /* character at block+24 */
+
+  if (handle == g.mode_handle && chr == 13)
+  {
+    g.menu_handle = 0;
+    _swix(Wimp_CreateMenu, _IN(1), -1);   /* remove menu and dialogue */
+    return mode_wimpcommand();            /* apply the typed mode string */
+  }
+
+  /* Not Return in the mode dialogue: pass the key on.  (As the assembler did,
+   * this passes the window handle, not the character, when the press wasn't in
+   * our dialogue - harmless, the Wimp ignores an unknown key code.) */
+  return _swix(Wimp_ProcessKey, _IN(0), (handle == g.mode_handle) ? chr : handle);
+}
+
+#if OPT_LOADMODEFILES
+/* ----------------------------------------------------------------------- *
+ *  Load a mode description file via *LoadModeFile (was Mode_LoadFile).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *mode_loadfile(const char *name)
+{
+  char cmd[256];
+  char *p = mod_copystring("LoadModeFile ", cmd, sizeof(cmd));
+  mod_copystring(name, p, (int)(cmd + sizeof(cmd) - p));
+  return _swix(OS_CLI, _IN(0), cmd);
+}
+#endif
+
+/* ----------------------------------------------------------------------- *
+ *  Get the current mode and update the selection / icons (was Mode_Init).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *mode_init(void)
+{
+  mode_info mi;
+  _kernel_oserror *e;
+  unsigned char *mode;
+  int spec = mode_getcurrent();
+
+  e = mode_getinfo(spec, &mi);
+  if (e)
+    return e;
+  mode_testpalette(&mi);
+  mode = mode_setselection(&mi);
+  mode_setwindowicons(mode, &mi);
+
+  /* Reopen any open menu so the ticks are right.  The Wimp keeps an already-
+   * open menu in place when re-created, so the position passed here is
+   * irrelevant (cf. the assembler, which passed whatever r2/r3 held). */
+  if (g.menu_handle != 0)
+    menu_show((int *)g.menu_handle, 0, 0);
+
+  return NULL;
+}

@@ -1,9 +1,16 @@
 # DisplayManager — assembler→C port design
 
+**Status: COMPLETE (build-verified, v0.45).** All six steps are ported and build
+clean as a `CModule`; the 12 assembler `s/` files and `VersionASM` have been
+removed (preserved in git history). The one deliberately un-ported piece is the
+standalone (`-DSTANDALONE`) RAM build's ResourceFS registration (was `s/ResFiles`);
+the ROM build serves resources via the ROM resource filing system. Remaining:
+on-hardware confirmation in a full ROM build.
+
 **Component:** `Video/UserI/Display` (module title `DisplayManager`, target `Display`)
-**Current source:** pure ARM assembler, 12 files in `s/`, ~4,285 lines, Acorn 1996, Apache-2.0.
-**Port type:** in-place, behaviour-preserving asm→C rewrite. **Apache-2.0 retained** (derivative of Acorn's code). New header (`cmhg/modhead`, processed by **CMunge** — a cmhg superset, now the tree-wide build tool) replaces the hand-written asm module header; build switches `AAsmModule`→`CModule`. CMunge gives us `module-is-runnable` and native `error-base`/`error-identifiers`.
-**Baseline version being ported:** 0.44 (29 May 2016). Port lands as **0.45** (behaviour identical; version bump marks the language change).
+**Original source:** pure ARM assembler, 12 files in `s/`, ~4,285 lines, Acorn 1996, Apache-2.0.
+**Port type:** in-place, behaviour-preserving asm→C rewrite. **Apache-2.0 retained** (derivative of Acorn's code). New header (`cmhg/modhead`, processed by **CMunge** — a cmhg superset, now the tree-wide build tool) replaces the hand-written asm module header; build switched `AAsmModule`→`CModule`. CMunge gives us `module-is-runnable` and native `error-base`/`error-identifiers`.
+**Version:** ported from 0.44 (29 May 2016) to **0.45** (19 Jun 2026) — behaviour identical; the bump marks the language change.
 
 > This is a whole-module rewrite of the same class as the Territory C rewrite —
 > a multi-step, build-and-verify effort, **not** a veneer tidy like the Toolbox

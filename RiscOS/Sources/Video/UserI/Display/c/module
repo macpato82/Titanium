@@ -95,19 +95,32 @@ void mod_pollword(void)
   int pw = g.pollword;
 
   if (pw & pf_settitle)
-  {
-    /* TODO(step3): Window_SetTitle(); */
-  }
+    window_settitle();
   if (pw & pf_modeinit)
-  {
-    /* TODO(step4): Mode_Init(); */
-  }
+    mode_init();
   if (pw & pf_refreshicons)
-  {
-    /* TODO(step3): Icon_Refresh(); */
-  }
+    icon_refresh();
 
   g.pollword = 0;           /* safest thing to do (cf. assembler) */
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Copy a string (was Mod_CopyString).  Copies src into dst; if size >= 0 the
+ *  buffer is bounded (at most size-1 bytes plus a terminator).  Always 0-
+ *  terminates.  Returns a pointer to the terminator (for appending).
+ * ----------------------------------------------------------------------- */
+char *mod_copystring(const char *src, char *dst, int size)
+{
+  if (size == 0)
+    return dst;
+  while (size != 1 && *src != '\0')
+  {
+    *dst++ = *src++;
+    if (size > 0)
+      size--;
+  }
+  *dst = '\0';
+  return dst;
 }
 
 /* ----------------------------------------------------------------------- *
@@ -152,7 +165,11 @@ _kernel_oserror *module_init(const char *cmd_tail, int podule_base, void *pw)
   (void)pw;
 
 #if OPT_STANDALONE
-  /* TODO(step2): ResourceFS_RegisterFiles(Resources()); */
+  /* NOT PORTED: the standalone (RAM) build registered its Messages/Templates
+   * with ResourceFS here (was s/ResFiles via ResourceFS_RegisterFiles).  The
+   * ROM build - the supported configuration - serves these through the ROM
+   * resource filing system instead, so this is a known limitation of a
+   * stand-alone *RMLoad and would need a generated ResourceFS blob to restore. */
 #endif
 
   /* Set DisplayManager$$Path to its default if not already defined. */
@@ -179,7 +196,7 @@ _kernel_oserror *module_final(int fatal, int podule_base, void *pw)
   mod_shutdown();
 
 #if OPT_STANDALONE
-  /* TODO(step2): ResourceFS_DeregisterFiles(Resources()); */
+  /* Counterpart to the (un-ported) ResourceFS registration in module_init. */
 #endif
 
   return NULL;
@@ -249,7 +266,16 @@ void module_service(int service_number, _kernel_swi_regs *r, void *pw)
   case Service_ModeFileChanged:
     if (g.task_handle > 0)
     {
-      /* TODO(step5): Menu_Init(); refresh iconbar icon (display sprite). */
+      int blk[10];
+      menu_init();                          /* rebuild the menus            */
+
+      /* Refresh the iconbar icon in case the "display" sprite changed. */
+      blk[0] = -2;                           /* iconbar_whandle             */
+      blk[1] = g.icon_handle;
+      if (_swix(Wimp_GetIconState, _IN(1), blk) == NULL)
+        _swix(Wimp_ForceRedraw, _INR(0,4),
+              -2, blk[2], blk[3], blk[4], blk[5]);
+
       g.pollword |= pf_modeinit | pf_refreshicons | pf_settitle;
     }
     break;
@@ -339,9 +365,21 @@ int main(int argc, char **argv)
 
   g.task_handle = handle;
 
-  /* TODO(step3): Icon_Init(); Window_Init(); */
-  /* TODO(step5): Menu_Init(); */
-  /* TODO(step4): Mode_Init(); */
+  /* Initialise, aborting (report + shut down) on failure - was the
+   * Icon_Init / Window_Init / Menu_Init / Mode_Init chain in Mod_Start. */
+  e = icon_init();
+  if (e == NULL)
+    e = window_init();
+  if (e == NULL)
+    e = menu_init();
+  if (e == NULL)
+    e = mode_init();
+  if (e)
+  {
+    mod_reporterror(e, 2 /* Cancel button */);
+    mod_shutdown();
+    exit(EXIT_FAILURE);
+  }
 
 #if OPT_LOADMODEFILES
   g.scrap_ref = -1;
@@ -352,6 +390,7 @@ int main(int argc, char **argv)
   {
     int block[64];
     int event;
+    _kernel_oserror *e = NULL;
 
     if (_swix(Wimp_Poll, _INR(0,1) | _IN(3) | _OUT(0),
               POLL_MASK, block, &g.pollword, &event))
@@ -359,10 +398,25 @@ int main(int argc, char **argv)
 
     switch (event)
     {
-    /* TODO(step3): event_OPEN -> Window_Open; event_CLOSE -> Window_Close */
-    /* TODO(step6): event_MOUSE_CLICK -> Mouse_Click                      */
-    /* TODO(step4): event_KEY_PRESSED -> Mode_KeyPressed                  */
-    /* TODO(step5): event_MENU_SELECTION -> Menu_Selection               */
+    case event_OPEN:
+      window_open(block);
+      break;
+
+    case event_CLOSE:
+      window_close(block);
+      break;
+
+    case event_MOUSE_CLICK:
+      e = mouse_click(block);
+      break;
+
+    case event_KEY_PRESSED:
+      e = mode_keypressed(block);
+      break;
+
+    case event_MENU_SELECTION:
+      e = menu_selection(block);
+      break;
 
     case event_POLLWORD_NONZERO:
       mod_pollword();
@@ -370,17 +424,17 @@ int main(int argc, char **argv)
 
     case event_USER_MESSAGE:
     case event_USER_MESSAGE_REC:
-      /* TODO(step6): Message_Received / Message_Recorded full dispatch. */
-      if (block[4] == Message_Quit)
-      {
-        mod_shutdown();
-        exit(EXIT_SUCCESS);
-      }
+      e = message_received(block);
       break;
 
     default:
       break;
     }
+
+    /* Report any error from an event handler (was the MOVVS/BLVS at the top of
+     * repoll_wimp in the assembler), with an OK button. */
+    if (e != NULL)
+      mod_reporterror(e, 1);
   }
 
   return 0;

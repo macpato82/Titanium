@@ -1,0 +1,105 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Screen-mode constants and descriptor model used by the mode core (c/mode)
+ * and the menu/mouse/message code that reads enumerated mode descriptors.
+ * Mirrors Hdr:ScrModes, Hdr:GraphicsV, Hdr:VduExt and the s/Front mode maps.
+ */
+#ifndef DISPLAY_MODEDEFS_H
+#define DISPLAY_MODEDEFS_H
+
+#include "options.h"
+
+/* OS_ScreenMode reason codes (Hdr:ScrModes). */
+#define ScreenModeReason_ReturnMode            1
+#define ScreenModeReason_EnumerateModes        2
+#define ScreenModeReason_ModeSpecifierToString 14
+
+/* OS_ReadModeVariable variable numbers (Hdr:VduExt). */
+#define VduExt_ModeFlags    0
+#define VduExt_NColour      3
+#define VduExt_Log2BPP      9
+#define VduExt_XWindLimit   11
+#define VduExt_YWindLimit   12
+
+/* Mode flags (Hdr:VduExt).  Note ModeFlag_64k shares the FullPalette bit, and
+ * ChromaSubsampleMode shares the GreyscalePalette bit, exactly as the OS does. */
+#define ModeFlag_FullPalette           (1u << 7)
+#define ModeFlag_64k                   ModeFlag_FullPalette
+#define ModeFlag_GreyscalePalette      (1u << 9)
+#define ModeFlag_ChromaSubsampleMode   ModeFlag_GreyscalePalette
+#define ModeFlag_DataFormat_Mask       (0xFu << 12)
+#define ModeFlag_DataFormatFamily_Mask (0x3u << 12)
+#define ModeFlag_DataFormatFamily_RGB  0
+#define ModeFlag_DataFormatSub_Mask    (0xCu << 12)
+
+/* Mode flags retained when reading mode information (cf. Mode_GetInfo). */
+#define ModeFlag_Relevant \
+  (ModeFlag_FullPalette | ModeFlag_64k | ModeFlag_ChromaSubsampleMode | \
+   ModeFlag_DataFormat_Mask)
+
+/* Square-pixel marker stored in a descriptor's flags word (s/Front). */
+#define flags_squarepixel  (1u << 31)
+
+/* "No mode" sentinel for selected_mode / descriptor pointers (asm used -1). */
+#define MODE_NONE  ((unsigned char *)-1)
+
+/* Number of items in the colours menu (mo_co_mono .. mo_co_16M). */
+#define COLOURS_COUNT  10
+
+/* GVPixelFormat (Hdr:GraphicsV): NColour, ModeFlags, Log2BPP. */
+typedef struct {
+  int ncolour;
+  int modeflags;
+  int log2bpp;
+} gvpixelformat;
+
+/* Bundle of mode information (replaces the asm r1/r3/r4/r5/r6 working set). */
+typedef struct {
+  int xres;
+  int yres;
+  int rate;        /* -1 = unknown                                    */
+  int flags;       /* f_greylevel etc. (set by mode_testpalette)      */
+  gvpixelformat pf;
+} mode_info;
+
+/* Result of mode_findsubclass (was the asm r2/r3/r4/r5 outputs). */
+typedef struct {
+  unsigned char **subclass;  /* pointer into mode_sortedlist, or NULL  */
+  int            colours;    /* possibly-downgraded colour menu item   */
+  int            class;      /* possibly-downgraded class index        */
+  unsigned char *mode;       /* matching mode descriptor, or NULL      */
+} subclass_result;
+
+/* --- Enumerated mode descriptor (descriptor = unsigned char *) ----------- *
+ * size@0 flags@4.  Old format (flags low byte 1): xres@8 yres@12 depth@16
+ * rate@20 name@24.  New format (flags low byte 3 = bit1 set): xres@8 yres@12
+ * format(GVPixelFormat)@16 rate@28 name@32.                                  */
+#define MD_size(d)       (*(int *)((unsigned char *)(d) + 0))
+#define MD_flags(d)      (*(int *)((unsigned char *)(d) + 4))
+#define MD_isnew(d)      ((MD_flags(d) & 2) != 0)
+#define MD_xres(d)       (*(int *)((unsigned char *)(d) + 8))
+#define MD_yres(d)       (*(int *)((unsigned char *)(d) + 12))
+#define MD_old_depth(d)  (*(int *)((unsigned char *)(d) + 16))
+#define MD_old_rate(d)   (*(int *)((unsigned char *)(d) + 20))
+#define MD_old_name(d)   ((char *)((unsigned char *)(d) + 24))
+#define MD_new_format(d) ((gvpixelformat *)((unsigned char *)(d) + 16))
+#define MD_new_rate(d)   (*(int *)((unsigned char *)(d) + 28))
+#define MD_new_name(d)   ((char *)((unsigned char *)(d) + 32))
+#define MD_rate(d)       (MD_isnew(d) ? MD_new_rate(d) : MD_old_rate(d))
+#define MD_name(d)       (MD_isnew(d) ? MD_new_name(d) : MD_old_name(d))
+
+#endif

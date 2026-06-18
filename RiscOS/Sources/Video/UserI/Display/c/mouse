@@ -1,0 +1,216 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Mouse-click handling (was s/Mouse).  Middle button (menu) pops up the
+ * iconbar / colours / resolution / rate menus; Select and Adjust open the
+ * dialogue, pop the colour/resolution/rate menus, apply (OK) or close
+ * (Cancel) the dialogue, and apply the typed mode (the mode-dialogue OK).
+ */
+#include <stddef.h>
+
+#include "kernel.h"
+#include "swis.h"
+
+#include "display.h"
+#include "modedefs.h"
+#include "wimpdefs.h"
+
+/* ----------------------------------------------------------------------- *
+ *  Work out the screen coords for a pop-up menu just by an icon (was
+ *  set_icon_xy).  We read the window's visible area with Wimp_GetWindowState
+ *  (the assembler used Wimp_GetWindowInfo but only looked at the visible-area
+ *  words, which GetWindowState returns identically - and without the icon
+ *  definitions that could overflow the block).
+ * ----------------------------------------------------------------------- */
+static void set_icon_xy(int window, int icon, int *px, int *py)
+{
+  int iblk[10];
+  int wblk[9];
+
+  *px = 0;
+  *py = 0;
+
+  iblk[0] = window;
+  iblk[1] = icon;
+  if (_swix(Wimp_GetIconState, _IN(1), iblk) != NULL)
+    return;
+  /* icon bbox (work-area): x0@idx2 y0@idx3 x1@idx4 y1@idx5 */
+
+  wblk[0] = window;
+  if (_swix(Wimp_GetWindowState, _IN(1), wblk) != NULL)
+    return;
+  /* visible area: x0@idx1 y0@idx2 x1@idx3 y1@idx4 */
+
+  *px = wblk[1] + iblk[4];      /* window left + icon right */
+  *py = wblk[4] + iblk[5];      /* window top  + icon top   */
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Middle button: pop up the appropriate menu (was click_menu).
+ * ----------------------------------------------------------------------- */
+static void mouse_menu(int x, int y, int window, int icon)
+{
+  int mx = 0, my = 0;
+
+  if (window == ICONBAR_WHANDLE)
+  {
+    menu_show((int *)g.m_iconbarmenu, x - 64, 96 + 2 * 44);
+    return;
+  }
+
+  if (window != g.display_handle)
+    return;
+
+  if (icon == ic_display_colbutton)
+  {
+    set_icon_xy(window, icon, &mx, &my);
+    menu_show((int *)g.m_coloursmenu, mx, my);
+  }
+  else if (icon == ic_display_resbutton)
+  {
+    set_icon_xy(window, icon, &mx, &my);
+    if (g.m_resolutionmenu != NULL)
+      menu_show((int *)g.m_resolutionmenu, mx, my);
+  }
+#if OPT_SELECTFRAMERATE
+  else if (icon == ic_display_ratebutton)
+  {
+    menu_rate();
+    if (!(g.flags & f_ratemenuvalid))
+      return;
+    set_icon_xy(window, icon, &mx, &my);
+    if (g.m_ratemenu != NULL)
+      menu_show((int *)g.m_ratemenu, mx, my);
+  }
+#endif
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Select / Adjust button (was click_select).
+ * ----------------------------------------------------------------------- */
+static _kernel_oserror *mouse_select(int x, int y, int buttons,
+                                     int window, int icon)
+{
+  int cb[1];
+
+  /* Icon bar: bring up the display dialogue for the current mode. */
+  if (window == ICONBAR_WHANDLE)
+  {
+    mode_init();
+    cb[0] = g.display_handle;
+    window_close(cb);
+    return window_openbehind(g.display_handle, -1, x - 64, 136);
+  }
+
+  if (window == g.display_handle)
+  {
+    int mx, my;
+
+    /* Colour / resolution / rate pop-ups: only for Select. */
+    if (icon == ic_display_colbutton && !(buttons & BUTTON_RIGHT))
+    {
+      set_icon_xy(window, icon, &mx, &my);
+      menu_show((int *)g.m_coloursmenu, mx, my);
+      return NULL;
+    }
+    if (icon == ic_display_resbutton && !(buttons & BUTTON_RIGHT))
+    {
+      set_icon_xy(window, icon, &mx, &my);
+      if (g.m_resolutionmenu != NULL)
+        menu_show((int *)g.m_resolutionmenu, mx, my);
+      return NULL;
+    }
+#if OPT_SELECTFRAMERATE
+    if (icon == ic_display_ratebutton && !(buttons & BUTTON_RIGHT))
+    {
+      menu_rate();
+      if (!(g.flags & f_ratemenuvalid))
+        return NULL;
+      set_icon_xy(window, icon, &mx, &my);
+      if (g.m_ratemenu != NULL)
+        menu_show((int *)g.m_ratemenu, mx, my);
+      return NULL;
+    }
+#endif
+
+    if (icon == ic_display_ok)
+    {
+      _kernel_oserror *e = mode_changemode();
+      if (e != NULL)
+        return e;                       /* leave the window open on error */
+      if (!(buttons & BUTTON_RIGHT))    /* Select: close the dialogue     */
+      {
+        cb[0] = window;
+        window_close(cb);
+      }
+      return NULL;
+    }
+
+    if (icon == ic_display_cancel)
+    {
+      if (!(buttons & BUTTON_RIGHT))    /* Select: close the dialogue     */
+      {
+        cb[0] = window;
+        window_close(cb);
+        return NULL;
+      }
+      {                                 /* Adjust: restore the icons      */
+        _kernel_oserror *e = mode_init();
+        if (e == NULL)
+          icon_refresh();
+        return e;
+      }
+    }
+
+    return NULL;
+  }
+
+  /* Mode dialogue OK button: apply the typed mode string. */
+  if (window == g.mode_handle && icon == ic_mode_ok)
+  {
+    _kernel_oserror *e = mode_wimpcommand();
+
+    if (buttons & BUTTON_RIGHT)
+    {
+      _swix(Wimp_CreateMenu, _IN(1), g.menu_handle);   /* Adjust: reshow  */
+    }
+    else
+    {
+      g.menu_handle = 0;
+      _swix(Wimp_CreateMenu, _IN(1), -1);              /* Select: remove  */
+    }
+    return e;                            /* report any mode error          */
+  }
+
+  return NULL;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Mouse click dispatcher (was Mouse_Click).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *mouse_click(int *block)
+{
+  int x = block[0], y = block[1], buttons = block[2];
+  int window = block[3], icon = block[4];
+
+  if (buttons & (BUTTON_LEFT | BUTTON_RIGHT))
+    return mouse_select(x, y, buttons, window, icon);
+
+  if (buttons & BUTTON_MIDDLE)
+    mouse_menu(x, y, window, icon);
+
+  return NULL;
+}

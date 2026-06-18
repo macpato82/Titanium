@@ -1,0 +1,126 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Wimp / OS constants and window-block field offsets used by the port.  These
+ * mirror the assembler-header symbols the original used (Hdr:WimpSpace, Hdr:Wimp,
+ * Hdr:Sprite, Hdr:VduExt) so the template / icon code reads the OS-formatted
+ * blocks at exactly the same offsets.
+ */
+#ifndef DISPLAY_WIMPDEFS_H
+#define DISPLAY_WIMPDEFS_H
+
+/* Iconbar priority for the mode chooser (Hdr:Wimp WimpPriority_ModeChooser). */
+#define WimpPriority_ModeChooser   0x20000000
+
+/* Wimp_SpriteOp / OS_SpriteOp reason (Hdr:Sprite). */
+#define SpriteReason_ReadSpriteSize 40
+
+/* OS_ReadModeVariable variable numbers (Hdr:VduExt). */
+#define VduExt_XEigFactor          4
+#define VduExt_YEigFactor          5
+
+/* ScreenModes_ReadInfo SWI (reason 0 in R0 returns R0 -> monitor name). */
+#define SWI_ScreenModes_ReadInfo   0x487C0
+
+/* --- Wimp window block (Hdr:WimpSpace "wimp_createstr") ------------------ *
+ * Indirected blocks are { char *buffer; char *validation; int size }, so the
+ * buffer is at +0 and the size at +8.                                        */
+#define W_BHANDLE   24    /* handle to open behind                            */
+#define W_FLAGS     28    /* window flags                                     */
+#define W_TITLE     72    /* title indirected data (buffer +0, size +8)       */
+#define W_NICONS    84    /* number of icons                                  */
+#define W_ICONS     88    /* first icon definition                            */
+
+/* --- Wimp icon block (Hdr:WimpSpace "icon definition") ------------------- */
+#define I_FLAGS     16    /* icon flags within an icon definition             */
+#define I_DATA      20    /* icon data (indirected: buffer +0, size +8)       */
+#define I_SIZE      32    /* stride: bytes per icon definition (1 << 5)       */
+
+/* Indirected-block sub-offsets. */
+#define IND_BUFFER  0
+#define IND_SIZE    8
+
+/* --- Wimp menu block (Hdr:WimpSpace "menu definition") ------------------- *
+ * Header: title[12], title fg/bg + work fg/bg [4], itemwidth, itemheight,
+ * verticalgap (28 bytes).  Each item: itemflags, submenu, iconflags,
+ * icondata[12] (24 bytes).                                                   */
+#define M_HEADERSIZE  28
+#define MI_ITEMFLAGS   0
+#define MI_SUBMENU     4
+#define MI_ICONFLAGS   8
+#define MI_ICONDATA   12
+#define MI_SIZE       24
+
+/* Menu item flags (mi_itemflags). */
+#define MI_IT_TICK      (1u << 0)
+#define MI_IT_DOTTED    (1u << 1)
+#define MI_IT_WRITEABLE (1u << 2)
+#define MI_IT_WARNING   (1u << 3)
+#define MI_IT_TRAVERSE  (1u << 4)
+#define MI_IT_LASTITEM  (1u << 7)
+
+/* Icon flags (Hdr:WimpSpace) used when hand-building menu item templates. */
+#define IF_TEXT        (1u << 0)
+#define IF_FILLED      (1u << 5)
+#define IF_INDIRECTED  (1u << 8)
+#define IS_SHADED      (1u << 22)
+#define IFB_FCOL       24
+#define IFB_BCOL       28
+
+/* Mouse button states (Wimp_GetPointerInfo block +8 / mouse-click block +8). */
+#define BUTTON_RIGHT   1
+#define BUTTON_MIDDLE  2
+#define BUTTON_LEFT    4
+
+/* Icon-bar window handle (Hdr:WimpSpace iconbar_whandle). */
+#define ICONBAR_WHANDLE  (-2)
+
+/* User_Message reason code (Hdr:WimpSpace). */
+#define User_Message   17
+
+/* --- Wimp message block (Hdr:Global.Messages), as int[] word indices ----- *
+ * Bytes: ms_size@0 ms_taskhandle@4 ms_myref@8 ms_yourref@12 ms_action@16
+ * ms_data@20.                                                                */
+#define MSW_SIZE        0
+#define MSW_TASKHANDLE  1
+#define MSW_MYREF       2
+#define MSW_YOURREF     3
+#define MSW_ACTION      4
+#define MSW_DATA        5
+
+/* Help request data is a wimp_mouseblk at ms_data (x,y,buttons,window,icon);
+ * the reply help text goes at ms_data (msHelp_message = byte 20). */
+#define MSW_HELP_WINDOW   (MSW_DATA + 3)   /* ms_data + b_window (12) */
+#define MSW_HELP_ICON     (MSW_DATA + 4)   /* ms_data + b_icon   (16) */
+#define MSHELP_MESSAGE    20
+
+/* Data-transfer message (DataLoad / DataSave): window,icon,x,y,filesize,
+ * filetype,filename within ms_data. */
+#define MSW_DT_FILESIZE   (MSW_DATA + 4)   /* ms_data + 16 */
+#define MSW_DT_FILETYPE   (MSW_DATA + 5)   /* ms_data + 20 */
+#define MSDT_FILENAME     (20 + 24)        /* ms_data + 24 (byte offset) */
+
+/* File types (Hdr:Global.FileTypes). */
+#define FileType_Text   0xFFF
+#define FileType_EDID   0xF76
+
+/* Accessors into a loaded template's window block (char *t). */
+#define WIMP_TITLE_BUF(t)    (*(char **)((char *)(t) + W_TITLE + IND_BUFFER))
+#define WIMP_TITLE_SIZE(t)   (*(int   *)((char *)(t) + W_TITLE + IND_SIZE))
+#define WIMP_ICON_BUF(t,n)   (*(char **)((char *)(t) + W_ICONS + I_SIZE*(n) + I_DATA + IND_BUFFER))
+#define WIMP_ICON_SIZE(t,n)  (*(int   *)((char *)(t) + W_ICONS + I_SIZE*(n) + I_DATA + IND_SIZE))
+
+#endif

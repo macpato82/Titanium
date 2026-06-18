@@ -18,6 +18,8 @@
  * demand and looks up tokens / error tokens in it.  The file block lives in the
  * shared state (g.message_file_block); f_messagesopen tracks whether it is open.
  */
+#include <stddef.h>
+
 #include "kernel.h"
 #include "swis.h"
 

@@ -1,0 +1,552 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * The menus (was s/Menu): the iconbar menu, the colours / resolution / rate
+ * pop-up menus, and the decoding of selections from them.
+ *
+ * The iconbar and colours menus are built once (menu_init) from MessageTrans
+ * templates; the resolution and rate menus are rebuilt from the enumerated mode
+ * list (menu_resolution / menu_rate) as the selection changes.  Each template
+ * fed to MessageTrans_MakeMenus mirrors the byte layout the old Menu/Item
+ * assembler macros emitted (title token, colours, height/gap, then per-item
+ * token + word-aligned itemflags / submenu / iconflags); MakeMenus translates
+ * the tokens and points indirected item text into the (held-open) Messages file,
+ * so no extra buffer is needed.
+ *
+ * mode_classlist / mode_menulist are the structures built in c/mode:
+ *   classlist[i]      -> &sortedlist[k]  (start of the i'th resolution's modes)
+ *   menulist[k]       -> &classlist[i]   (one per *named* resolution menu item)
+ */
+#include <stddef.h>
+
+#include "kernel.h"
+#include "swis.h"
+
+#include "modhead.h"
+#include "display.h"
+#include "modedefs.h"
+#include "wimpdefs.h"
+
+/* Standard menu-item icon flags (was menuiconflags in Hdr:MsgMenus):
+ * work-area fg colour 7, bg colour 0, filled, text. */
+#define MENU_ICONFLAGS  ((7u << IFB_FCOL) | IF_FILLED | IF_TEXT)
+
+/* Colour menu items, in menu order (mo_co_mono .. mo_co_16M); the message
+ * tokens are not in numeric order (4K precedes 32K). */
+#define ALLDEPTHS_MASK                                                       \
+  ((1 << mo_co_mono) | (1 << mo_co_grey4) | (1 << mo_co_colour16) |          \
+   (1 << mo_co_colour256) | (1 << mo_co_4K) | (1 << mo_co_32K) |            \
+   (1 << mo_co_64K) | (1 << mo_co_16M))
+
+/* ----------------------------------------------------------------------- *
+ *  MakeMenus template builders.
+ *  The template buffer must be word-aligned (pass an int array) so that the
+ *  ALIGN before each item's flag words matches the assembler's.
+ * ----------------------------------------------------------------------- */
+
+/* Append a menu header (title token, standard colours, item height + gap). */
+static unsigned char *tmpl_header(unsigned char *p, const char *title)
+{
+  while (*title)
+    *p++ = (unsigned char)*title++;
+  *p++ = 0;                                   /* title token, 0-terminated */
+  *p++ = 7; *p++ = 2; *p++ = 7; *p++ = 0;     /* title fg/bg, work fg/bg   */
+  *p++ = 44; *p++ = 0;                         /* item height, gap          */
+  return p;
+}
+
+/* Append a menu item (token, then word-aligned itemflags/submenu/iconflags). */
+static unsigned char *tmpl_item(unsigned char *p, unsigned char *base,
+                                const char *token, int itemflags,
+                                int submenu, int iconflags)
+{
+  while (*token)
+    *p++ = (unsigned char)*token++;
+  *p++ = 0;
+  while (((p - base) & 3) != 0)               /* ALIGN to word boundary    */
+    *p++ = 0;
+  ((int *)p)[0] = itemflags;
+  ((int *)p)[1] = submenu;
+  ((int *)p)[2] = iconflags;
+  return p + 12;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Tick helpers (was Menu_ChangeTick / Menu_RemoveTick).
+ * ----------------------------------------------------------------------- */
+
+/* Toggle the tick on a menu item. */
+static void menu_changetick(int item, int *menu)
+{
+  int *flags = (int *)((char *)menu + M_HEADERSIZE + item * MI_SIZE + MI_ITEMFLAGS);
+  *flags ^= MI_IT_TICK;
+}
+
+/* Remove the tick from a menu (if it has one). */
+static void menu_removetick(int *menu)
+{
+  if (menu != NULL && g.menu_tick != 0xFF)
+    menu_changetick(g.menu_tick, menu);
+}
+
+/* The menu tree has closed (was the body of msg_menusdeleted): drop the tick
+ * from the open menu and forget it. */
+void menu_deleted(void)
+{
+  menu_removetick((int *)g.menu_handle);
+  g.menu_handle = 0;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Class <-> resolution-menu-item mapping (was Menu_ClassToResolution /
+ *  Menu_ResolutionToClass).
+ * ----------------------------------------------------------------------- */
+
+/* Resolution menu item -> index into mode_classlist. */
+static int menu_resolutiontoclass(int item)
+{
+  unsigned char ****menulist  = (unsigned char ****)g.mode_menulist;
+  unsigned char  ***classlist = (unsigned char  ***)g.mode_classlist;
+  unsigned char  ***slot      = menulist[item];   /* &classlist[i] */
+  return (int)(slot - classlist);
+}
+
+/* Class index -> resolution menu item, or 0xFF if it isn't on the menu. */
+static int menu_classtoresolution(int class)
+{
+  unsigned char  ***classlist = (unsigned char  ***)g.mode_classlist;
+  unsigned char ****menulist  = (unsigned char ****)g.mode_menulist;
+  unsigned char  ***target    = &classlist[class];
+  int i;
+
+  for (i = g.resolution_count - 1; i >= 0; i--)
+    if (menulist[i] == target)
+      return i;
+  return 0xFF;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Build the resolution menu (was Menu_Resolution).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *menu_resolution(void)
+{
+  _kernel_oserror *e;
+  int tbuf[16];
+  unsigned char *base = (unsigned char *)tbuf, *p;
+  unsigned char ***classlist;
+  unsigned char ****menulist;
+  unsigned char *item = NULL;
+  int count = 0;
+#if OPT_SORTONPIXELSHAPE
+  int prevshape = 0;
+#endif
+
+  e = mode_gettable();
+  if (e == NULL)
+    e = msgtrans_openfile();
+  if (e)
+    return e;
+
+  menulist = (unsigned char ****)g.mode_menulist;
+
+  if (g.m_resolutionmenu == NULL)
+    goto finish;
+
+  /* Dummy single-item menu to set up the translated header. */
+  p = tmpl_header(base, "T02");
+  p = tmpl_item(p, base, "MX1", MI_IT_LASTITEM, 0,
+                MENU_ICONFLAGS | IF_INDIRECTED);
+  *p++ = 0;
+  e = _swix(MessageTrans_MakeMenus, _INR(0,3),
+            g.message_file_block, base, g.m_resolutionmenu, g.m_resolutionsize);
+  if (e)
+    return e;
+
+  /* Create real (indirected) items, one per named resolution. */
+  classlist = (unsigned char ***)g.mode_classlist;
+  item = (unsigned char *)g.m_resolutionmenu + M_HEADERSIZE;
+
+  if (classlist != NULL && classlist[0] != NULL)
+  {
+    int i;
+#if OPT_SORTONPIXELSHAPE
+    /* Faithful to the assembler: the pixel-shape tracker is seeded from the
+     * SECOND mode pointer of the first class read as if it were a flags word
+     * (a latent quirk - it is only ever compared once the first item exists). */
+    prevshape = (int)(classlist[0][1]) & flags_squarepixel;
+#endif
+    for (i = 0; classlist[i] != NULL; i++)
+    {
+      unsigned char *desc = classlist[i][0];
+      char *name = MD_name(desc);
+
+      *menulist = &classlist[i];          /* tentative menulist entry      */
+      if (name[0] == '\0')
+        continue;                         /* unnamed: reuse the slot       */
+      menulist++;
+
+#if OPT_SORTONPIXELSHAPE
+      {
+        int shape = MD_flags(desc) & flags_squarepixel;
+        if (count != 0 && shape != prevshape)
+        {
+          prevshape = shape;              /* dotted line between shapes     */
+          *(int *)(item - MI_SIZE + MI_ITEMFLAGS) |= MI_IT_DOTTED;
+        }
+      }
+#endif
+      ((int *)item)[0] = 0;                                /* itemflags     */
+      ((int *)item)[1] = 0;                                /* submenu       */
+      ((int *)item)[2] = MENU_ICONFLAGS | IF_INDIRECTED;   /* iconflags     */
+      ((int *)item)[3] = (int)name;                        /* buffer        */
+      ((int *)item)[4] = 0;                                /* validation    */
+      ((int *)item)[5] = 128;                              /* length        */
+      item += MI_SIZE;
+      count++;
+    }
+  }
+
+  *menulist = NULL;                        /* terminate mode_menulist       */
+
+finish:
+  g.resolution_count = (unsigned char)count;
+  if (count == 0)
+    g.m_resolutionmenu = NULL;             /* no valid menu: don't keep it  */
+  else
+    *(int *)(item - MI_SIZE + MI_ITEMFLAGS) |= MI_IT_LASTITEM;
+  return NULL;
+}
+
+#if OPT_SELECTFRAMERATE
+/* ----------------------------------------------------------------------- *
+ *  Build the frame-rate menu for the current selection (was Menu_Rate).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *menu_rate(void)
+{
+  int tbuf[16];
+  unsigned char *base = (unsigned char *)tbuf, *p;
+  unsigned char **subclass = (unsigned char **)g.selected_subclass;
+  unsigned char *item, *cur;
+  int firstdepth, firstx, firsty;
+  int count = 0;
+
+  if (subclass == (unsigned char **)-1)
+    goto invalid;
+
+  msgtrans_openfile();                     /* as the assembler: ignore err  */
+
+  if (g.m_ratemenu == NULL)
+    goto invalid;
+
+  /* Dummy menu to set up the header. */
+  p = tmpl_header(base, "T03");
+  p = tmpl_item(p, base, "MX1", MI_IT_LASTITEM, 0, MENU_ICONFLAGS);
+  *p++ = 0;
+  if (_swix(MessageTrans_MakeMenus, _INR(0,3),
+            g.message_file_block, base, g.m_ratemenu, g.m_ratesize) != NULL)
+    goto invalid;
+
+  item = (unsigned char *)g.m_ratemenu + M_HEADERSIZE;
+  cur = *subclass++;
+  firstdepth = mode_descriptor_to_colourmenuitem(0, cur);
+  firstx = MD_xres(cur);
+  firsty = MD_yres(cur);
+
+  for (;;)
+  {
+    unsigned char *next;
+    char *q;
+    int last;
+
+    /* Direct item text "<rate>Hz" in the icon data. */
+    if (_swix(OS_ConvertInteger4, _INR(0,2) | _OUT(1),
+              MD_rate(cur), item + MI_ICONDATA, 12, &q) != NULL)
+      goto invalid;
+    mod_copystring("Hz", q, (int)((char *)item + MI_ICONDATA + 12 - q));
+    count++;
+
+    next = *subclass++;
+    if (next == NULL)
+      last = 1;
+    else if (mode_descriptor_to_colourmenuitem(0, next) != firstdepth)
+      last = 1;                            /* depth changed                 */
+    else if (MD_xres(next) != firstx || MD_yres(next) != firsty)
+      last = 1;                            /* resolution changed            */
+    else
+      last = 0;
+
+    ((int *)item)[0] = last ? MI_IT_LASTITEM : 0;   /* itemflags */
+    ((int *)item)[1] = 0;                            /* submenu   */
+    ((int *)item)[2] = MENU_ICONFLAGS;               /* iconflags */
+
+    if (last)
+      break;
+    item += MI_SIZE;
+    cur = next;
+  }
+
+  g.flags |= f_ratemenuvalid;
+  g.rate_count = (unsigned char)count;
+  if (g.menu_handle == (int)g.m_ratemenu)
+    g.menu_tick = 0xFF;                    /* just rebuilt: no tick to remove */
+  return NULL;
+
+invalid:
+  g.flags &= ~f_ratemenuvalid;
+  g.rate_count = 0;
+  return NULL;
+}
+#endif
+
+/* ----------------------------------------------------------------------- *
+ *  Make the menus (was Menu_Init): iconbar + colours menus, the submenu
+ *  links, the resolution menu, and unshading of available colour depths.
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *menu_init(void)
+{
+  static const char *const colour_tok[COLOURS_COUNT] = {
+    "M11", "M12", "M13", "M14", "M15", "M16", "M19", "M17", "M20", "M18"
+  };
+  _kernel_oserror *e;
+  int tbuf[80];
+  unsigned char *base = (unsigned char *)tbuf, *p;
+  int i;
+
+  g.menu_handle = 0;
+
+  e = msgtrans_openfile();
+  if (e)
+    return e;
+
+  /* Iconbar menu: Info, Mode. */
+  p = tmpl_header(base, "T00");
+  p = tmpl_item(p, base, "M01", 0, 0, MENU_ICONFLAGS | IF_INDIRECTED);
+  p = tmpl_item(p, base, "M02", MI_IT_LASTITEM | MI_IT_WARNING, 0,
+                MENU_ICONFLAGS | IF_INDIRECTED);
+  *p++ = 0;
+  e = _swix(MessageTrans_MakeMenus, _INR(0,3),
+            g.message_file_block, base, g.m_iconbarmenu,
+            M_HEADERSIZE + 2 * MI_SIZE);
+  if (e)
+    return e;
+
+  /* Colours menu: all items start shaded, unshaded below as modes allow. */
+  p = tmpl_header(base, "T01");
+  for (i = 0; i < COLOURS_COUNT; i++)
+    p = tmpl_item(p, base, colour_tok[i],
+                  (i == COLOURS_COUNT - 1) ? MI_IT_LASTITEM : 0, 0,
+                  MENU_ICONFLAGS | IF_INDIRECTED | IS_SHADED);
+  *p++ = 0;
+  e = _swix(MessageTrans_MakeMenus, _INR(0,3),
+            g.message_file_block, base, g.m_coloursmenu,
+            M_HEADERSIZE + COLOURS_COUNT * MI_SIZE);
+  if (e)
+    return e;
+
+  /* Point the iconbar menu's submenu fields at the info / mode windows. */
+  *(int *)((char *)g.m_iconbarmenu + M_HEADERSIZE + MI_SUBMENU + MI_SIZE * 0) =
+    g.info_handle;
+  *(int *)((char *)g.m_iconbarmenu + M_HEADERSIZE + MI_SUBMENU + MI_SIZE * 1) =
+    g.mode_handle;
+
+  e = menu_resolution();
+  if (e)
+    return e;
+
+  /* All colour items are shaded; unshade those for which a mode exists.  The
+   * assembler walked mode_menulist but (through a clobbered register) scanned
+   * the whole sorted list each time, so the result is simply the union of the
+   * colour depths over every mode - which is what we compute here. */
+  if (g.mode_menulist == NULL)
+    return NULL;
+
+  if (g.resolution_count >= 1)
+  {
+    unsigned char **sorted = (unsigned char **)g.mode_sortedlist;
+    int found = 0;
+
+    if (sorted != NULL)
+    {
+      for (i = 0; sorted[i] != NULL; i++)
+      {
+        found |= 1 << mode_descriptor_to_colourmenuitem(0, sorted[i]);
+        if (found == ALLDEPTHS_MASK)
+          break;
+      }
+    }
+
+    /* 16/256 grey availability mirrors 16/256 colour availability. */
+    found |= (found & ((1 << mo_co_colour16) | (1 << mo_co_colour256))) >> 1;
+
+    {
+      unsigned char *cm = (unsigned char *)g.m_coloursmenu;
+      int bits = found, n = 0;
+      while (bits != 0)
+      {
+        if (bits & 1)
+          *(int *)(cm + M_HEADERSIZE + n * MI_SIZE + MI_ICONFLAGS) &= ~IS_SHADED;
+        bits >>= 1;
+        n++;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Display a menu, ticking the current selection (was Menu_Show).
+ *  x / y are ignored by the Wimp when re-opening an already-open menu.
+ * ----------------------------------------------------------------------- */
+void menu_show(int *menu, int x, int y)
+{
+  int tick = 0xFF;
+
+  /* Remove the tick from the currently-open menu. */
+  if (g.menu_handle != 0)
+    menu_removetick((int *)g.menu_handle);
+
+  if (menu == (int *)g.m_coloursmenu)
+  {
+    if (g.selected_colours < COLOURS_COUNT)
+    {
+      tick = g.selected_colours;
+      menu_changetick(tick, menu);
+    }
+  }
+  else if (menu == (int *)g.m_resolutionmenu)
+  {
+    tick = menu_classtoresolution(g.selected_class);
+    if (tick < g.resolution_count)
+      menu_changetick(tick, menu);
+    else
+      tick = 0xFF;
+  }
+#if OPT_SELECTFRAMERATE
+  else if (menu == (int *)g.m_ratemenu)
+  {
+    if ((unsigned char *)g.selected_mode != MODE_NONE)
+    {
+      unsigned char **subclass = (unsigned char **)g.selected_subclass;
+      int i;
+      for (i = g.rate_count - 1; i >= 0; i--)
+        if (subclass[i] == (unsigned char *)g.selected_mode)
+        {
+          tick = i;
+          menu_changetick(i, menu);
+          break;
+        }
+    }
+  }
+#endif
+
+  g.menu_tick = (unsigned char)tick;
+  g.menu_handle = (int)menu;
+  _swix(Wimp_CreateMenu, _INR(1,3), menu, x, y);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Decode a menu selection (was Menu_Decode).
+ * ----------------------------------------------------------------------- */
+static _kernel_oserror *menu_decode(int *menu, int *selblock)
+{
+  int flags, colours, class;
+  subclass_result r;
+  _kernel_oserror *e;
+  mode_info mi;
+
+  if (menu == (int *)g.m_iconbarmenu)
+    return NULL;                           /* nothing to decode             */
+
+#if OPT_SELECTFRAMERATE
+  if (menu == (int *)g.m_ratemenu)
+  {
+    unsigned char **subclass = (unsigned char **)g.selected_subclass;
+    unsigned char *sel = subclass[selblock[0]];
+
+    if (sel == (unsigned char *)g.selected_mode)
+      return NULL;                         /* unchanged                     */
+    g.selected_mode = sel;
+
+    mi.rate = -1;
+    mode_setwindowicons(sel, &mi);
+    icon_refresh();
+    return NULL;
+  }
+#endif
+
+  if (menu == (int *)g.m_coloursmenu)
+  {
+    flags   = 1;                           /* downgrade class               */
+    colours = selblock[0];                 /* selected colour item          */
+    class   = g.selected_class;
+  }
+  else                                     /* resolution menu               */
+  {
+    flags   = 2;                           /* downgrade colours             */
+    colours = g.selected_colours;
+    class   = menu_resolutiontoclass(selblock[0]);
+  }
+
+  if (class == 0xFF)
+    class = 0;                             /* unsupported: start at the foot */
+
+  e = mode_findsubclass(flags, colours, class, -1, &r);
+  if (e != NULL)
+    e = mode_findsubclass(flags | 4, colours, class, -1, &r);  /* allow non-menu */
+  if (e != NULL)
+    return e;
+
+  g.selected_subclass = r.subclass;
+  g.selected_colours  = (unsigned char)r.colours;
+  g.selected_class    = (unsigned char)r.class;
+  g.selected_mode     = r.mode;
+
+  mi.rate = -1;
+  mode_setwindowicons(r.mode, &mi);
+  icon_refresh();
+  return NULL;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  The Wimp told us about a menu selection (was Menu_Selection).
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *menu_selection(int *block)
+{
+  int old = g.menu_handle;
+  int info[5];
+  _kernel_oserror *e;
+
+  e = menu_decode((int *)g.menu_handle, block);
+  if (e != NULL)
+    return e;
+
+  e = _swix(Wimp_GetPointerInfo, _IN(1), info);
+  if (e != NULL)
+    return e;
+
+  /* Adjust held and the menu is still the same: redisplay it. */
+  if ((info[2] & BUTTON_RIGHT) && g.menu_handle == old)
+  {
+    menu_show((int *)g.menu_handle, 0, 0);
+    return NULL;
+  }
+
+  /* Otherwise let the menu close. */
+  menu_removetick((int *)g.menu_handle);
+  g.menu_handle = 0;
+  return NULL;
+}
