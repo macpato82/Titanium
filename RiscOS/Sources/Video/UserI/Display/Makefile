@@ -26,7 +26,7 @@
 COMPONENT  = DisplayManager
 TARGET     = Display
 CMHGFILE   = modhead
-OBJS       = module
+OBJS       = module msgtrans
 # C sources that #include the CMunge-generated modhead.h (so the header is
 # generated before they compile).  Add later c/ files here as they are ported.
 CMHGDEPENDS = module
@@ -53,21 +53,12 @@ ROM_SYMS   = ${ABSSYM}
 SA_LIBS    += ${RLIB}
 
 # Dynamic dependencies:
-o.module:	c.module
-o.module:	C:h.kernel
-o.module:	C:h.swis
-o.module:	C:Global.h.RISCOS
-o.module:	C:Global.h.Services
-o.module:	C:Global.h.ModHand
-o.module:	C:Global.h.Variables
-o.module:	h.modhead
-o.module:	C:h.kernel
-o.module:	h.display
-o.module:	C:h.kernel
-o.module:	h.options
-h.modhead:	cmhg.modhead
-h.modhead:	C:Global.h.Services
-h.modhead:	VersionNum
+o.msgtrans:	c.msgtrans
+o.msgtrans:	C:h.kernel
+o.msgtrans:	C:h.swis
+o.msgtrans:	h.display
+o.msgtrans:	C:h.kernel
+o.msgtrans:	h.options
 o.modhead:	cmhg.modhead
 o.modhead:	C:Global.h.Services
 o.modhead:	VersionNum

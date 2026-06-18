@@ -28,6 +28,9 @@ RiscOS/Library/Acorn/ResGen
 RiscOS/Install/
 RiscOS/Export/
 
+# Generated CMunge/CMHG module header (build output, regenerated each build)
+RiscOS/Sources/Video/UserI/Display/h/modhead
+
 # Per-component intermediate output dirs (filetype-suffixed object trees)
 **/o/
 **/oz/
