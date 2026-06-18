@@ -1,11 +1,5 @@
 # Titanium — RISC OS source modernisation
 
-**Private repository — third-party RISC OS source.** This tree contains a full
-RISC OS source tree (Acorn / Pace / Castle / RISC OS Open and others) and must
-not be made public. All original copyright notices and Apache-2.0 licence
-headers are retained in every file; the modernisation work below preserves them
-byte-for-byte. Only first-party additions are separately licensed.
-
 This repo versions the **modernisation** of that tree: tidying the C sources and
 finishing the assembler→C ports, component by component, without changing
 behaviour.
