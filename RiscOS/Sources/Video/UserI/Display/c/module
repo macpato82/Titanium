@@ -275,6 +275,21 @@ _kernel_oserror *module_commands(const char *arg_string, int argc,
 }
 
 /* ----------------------------------------------------------------------- *
+ *  Report an error in a Wimp error box (was Mod_ReportError).
+ *  Uses the module banner ("Title") as the box title.  Returns the button
+ *  the user clicked (the value Wimp_ReportError returns in R1).
+ * ----------------------------------------------------------------------- */
+int mod_reporterror(_kernel_oserror *e, int flags)
+{
+  char banner[MAX_BANNER_SIZE];
+  int clicked = 0;
+
+  msgtrans_lookup("Title", banner, sizeof(banner), NULL);
+  _swix(Wimp_ReportError, _INR(0,2) | _OUT(1), e, flags, banner, &clicked);
+  return clicked;
+}
+
+/* ----------------------------------------------------------------------- *
  *  Application body (was Mod_Start).
  *  Runs once we have been OS_Module Enter'd as the current task.
  * ----------------------------------------------------------------------- */
