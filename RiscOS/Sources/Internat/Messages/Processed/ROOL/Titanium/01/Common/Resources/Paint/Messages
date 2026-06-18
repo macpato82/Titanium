@@ -1,0 +1,306 @@
+BarIcon:!paint
+Pnt00:Paint
+circle:circle
+BRUSH1ST:brush
+BRUSHCOUNT:12
+PntE1:Palette file doesn't match sprite palette
+PntE2:File is not a palette file
+PntE3:'%s' is not a palette file
+PntE4:Cannot open file '%s'
+PntE5a:Brush sprite cannot be found
+PntE5b:ECF sprite cannot be found
+PntE6:Sprite '%s' already exists
+PntE7:You need to give the sprite a name
+PntE8:Invalid height
+PntE9:A printer driver must be loaded using the Printers application before you can print
+PntEA:The sprite width and height must be at least 1
+PntEB:File type of '%s' not recognised
+PntEE:Cannot load template '%s'
+PntEF:Cannot find Paint's templates
+PntEG:There is not enough memory to perform this operation. Quit any unwanted applications or see the RISC OS User Guide for ways to maximise memory.
+PntEH:Unable to attach icon bar menu
+PntEI:Cannot initialise
+PntEJ:This sprite is stored in an unrecognised screen mode
+PntEM:Shear factor too large
+PntEN:Cannot perform this adjustment. The sprite is too large.
+PntEO:Couldn't find first brush sprite for the brush pane
+PntM1:© Acorn Computers Ltd, 1992
+PntM2:Sprite editor
+PntM3:Misc,Display,>Save,Sprite ''|New sprite...
+PntM4:Sprite
+PntM5:Select all ^A,Clear all  ^Z|Cut        ^X,Copy       ^C,Copy as,Paste      ^V,Rename,Delete     ^K|>Save,>Export PNG,>Export JPEG,>Info|>Print
+PntM6:Copy as
+PntM7:Rename
+PntM8:Display
+PntM9:Sprite and name,Full sprite details|Using desktop colours
+PntMA:Misc,Save,Paint,Edit,>Zoom,Grid F1
+PntMB:Save
+PntMC:>Sprite   F3,>PNG,>JPEG,>Palette ^F3
+PntMD:>Select ECF,Select colour|Show colours ^ãF1,Show tools    ^F1|Small colours,>Edit palette
+PntME:Edit
+PntMF:Flip vertically    F2,Flip horizontally ãF2,Rotate             ^R,Scale x            F4,Scale y           ãF4,Shear              ^H,>Adjust size        ^S,>Adjust resolution  ^D|>Insert columns     F5,>Insert rows        F6,>Delete columns    ãF5,>Delete rows       ãF6|Mask,Palette
+PntMG:Rotate
+PntMH:Grid
+PntMI:>Info,Snapshot...,Choices...,Quit
+PntMJ:Factor
+PntMK:Misc
+PntML:>Info,>Sprite|>Print PRINT
+PntMM:Misc
+PntMN:>Info,>File,Sort by name,Sort by size
+PntMO:Show,Colour
+PntF1:SpriteFile
+PntF2:This sprite file has been modified
+PntF3:Sprite file '%s' has been modified
+PntF4:<untitled>
+PntF5:1 sprite file modified
+PntF6:%d sprite files modified
+PntF7:newsprite
+PntF8:screen
+PntT1:Set/clear pixels
+PntT2:Filled circles
+PntT3:Lines
+PntT4:Circle outlines
+PntT5:Filled triangles
+PntT6:Filled ellipses
+PntT7:Ellipse outlines
+PntT8:Filled circle segments
+PntT9:Filled circle sectors
+PntTA:Circle outline sections
+PntTB:Filled parallelograms
+PntTC:Parallelogram outlines
+PntTD:Filled rectangles
+PntTE:Rectangle outlines
+PntTF:Replace colour
+PntTG:Move block
+PntTH:Move whole sprite
+PntTI:Copy block
+PntTJ:Insert text
+PntTK:Spray can
+PntTL:Use sprite as brush
+PntW1:  Sprite file window
+PntW21:%s by %s
+PntW22:mode %s at %s DPI
+PntW23:%s bytes
+PntW24:%s colours
+PntW25:%s, %s
+PntW3a:has palette
+PntW3b:no palette
+PntW3c:full 256 palette
+PntW3d:partial palette
+PntW4a:has mask
+PntW4b:no mask
+PntW4c:8bpp alpha mask
+PntW4d:%dbpp alpha channel
+PntW7:"%.12s" Colours
+PntW8:Edit colour
+PntW9:not present
+PntWA:Printer in use
+PntWB:Mode
+PntWC:Colours
+PntWF:"%.12s" Background Colour
+PntWG:Editing the current artist-friendly palette requires rearranging the sprite image data. Choose Rearrange to proceed, or Default to use a standard palette without changing the image data.
+PntWH:Cannot save Paint choices
+PntWI:Brush sprite '%s' already exists
+PntWJ:Cannot use this type of sprite as a brush
+PntX:Unrecoverable internal error (%0): preserving files in %1.%2 before exiting
+PntG1:Sprite ''
+PntG2:Mask
+PntG3:Yes
+PntG4:No
+PntG5:Palette
+PntG6:Selection
+PntG7:Alpha
+PntG8:Arthur
+PntG9:RISC OS 3.5
+PntGA:RISC OS 5.21
+PntGB:RISC OS 5.21, 6
+PntGC:RISC OS Select
+PntGD:Partial
+PntGE:%dbpp
+PntGF:%.4g x %.4g
+PntGG:RISC OS Select, 5.21
+PntGH:Full 256
+PntGI:8bpp Alpha
+PntGJ:RISC OS 3.6
+PntGrS:Show above 4:1
+PntGrO:Off
+FSys:System Font
+FPts:pt
+FPxs:px
+NEWCOL0:2 colours
+NEWCOL1:4 colours
+NEWCOL2:16 colours
+NEWCOL3:256 colours
+NEWCOL4:4 thousand
+NEWCOL5:32 thousand
+NEWCOL6:64 thousand
+NEWCOL7:16 million
+NEWPAL0:None
+NEWPAL1:Colour
+NEWPAL2:Greyscale
+NEWPAL3:|64 (fixed)
+NEWPAL4:16 (fixed)
+NEWTRA0:None
+NEWTRA1:Simple
+NEWTRA2:Alpha
+NEWTRA3:Alpha channel
+
+PECOMP:5
+PEQUAL:75
+
+PntH1:\T\´tool \w.|M\Sse\ã\K paint\¥tool.|M
+PntH2:\ﬂ\f'\L \w'. It \2edi\ã\L bitmap.|MUse \s\Q\a\Eoperat\y\K \Ã tool.
+PntH3:\ﬂ\f'\L \Z \w'.|MA \L \Z can\¡tain many \Ls, each of\≠\üan editable bitmap.|M\1\s on\f\L\Eedit it.
+PntH4:\ﬂ\f'\L \Z \w'.|M\1\s ov\…a \L\Eedit it.
+PntH5:\TPaint \c, an editor\˘\L \Zs.|MA \L \Z\¡tains one\ºmore \Ls. A \L\üa bitmap image.
+PntH6:\ﬂ\f\^ \w.|M\S\∆\y\^\Euse o\«associat\á\L.
+PntH7:Use\F\w\E\À\f\L.|MFill\Çappropriate fields\Qc\ˇOK.
+PntH76:\Vtick-box \us wheth\¶new \L has\ftransparency mask.
+PntH7h:\Vwritable field specifies\@\L \ô,\≠ must be differ\5\Û\ô\Åoth\…\Ls\Ç\Z.
+PntH7k:\Vnumeric writable field \us\@width\Y\L (in pixels).
+PntH7m:\Vnumeric writable field \us\@height\Y\L (in pixels).
+PntH7a/PntH7b/PntH7c:\¬\û\Ø\Ynew \L.
+PntH7d/PntH7e/PntH7f:\¬vertical\Ø\Ynew \L.
+PntH7n:\S\B\Û\ê\ƒs\Å\^s\†\P\ápalette \Õ\Qmask \Õ.
+PntH7o:\V\ó\9\_\^s.
+PntH7q:\S\B\Û\ê palette \Õs\†\P\á\_\^s\Qmask \Õ.
+PntH7r:\V\ó\9palette \Õ.
+PntH7t:\S\B\Û\ê mask \Õs\†\P\á\_\^s\Qpalette \Õ.
+PntH7u:\V\ó\9\Õ\Åtransparency mask.
+PntH77/PntH74/PntH79/PntH7g:These arrows \Ìsize\Ynew \L.
+PntH8:\V\w shows\X\Fversion\ÅPaint.
+PntH9:\V\w shows\X\œ \Z.
+PntHA:\V\w shows\X\œ.
+PntHB:Use\F\w\Eprint\f\L us\q\@\Kly load\áprint\…\Är.
+PntHC:\Tdith\…pattern \Bor.|MEnt\…a \L \ô\Q\B\fpattern\ƒ us\¥\s (1, 2, 3\º4).|MC\ˇ\s o\«OK button\Eadd\FECF\í\ê paint\¥\^s.
+PntHD:C\ˇ\s o\«arrows\Especify\¢width\Qheight\Y\L.|MC\ˇ\s o\«Adjust button\Eset\Fnew size.
+PntHE:Use\F\w\Etake\fsnapshot\Åpart\Y\Í, as\f\L. The delay feature \2include menus o\«snapshot.
+PntHF:Snapshot already\g progress
+PntHH:Escape
+PntHI:\T\m foreground \^.|M\Sshow\œ's \^ \B\j\w.|MC\ˇ\a\Eshow\@tool \w.|MDrag\@\r right\Eswap\@foreground\Q\∑\^s.
+PntHJ:\T\m \∑\^.|M\Sshow\œ's \^ \B\j\w\ºa \∑\^ \∆er.|MC\ˇ\a\Eshow\@tool \w.|MDrag\@\r left\Eswap\@foreground\Q\∑\^s.
+PntHK:\Vdialogue box asks\âto \∆e whether\˝\ã\L's palette arranged\g an artist-friendly ord\…or\@RISC OS \Ô order.|MChoos\q\@\Ô ord\…may improve per\ñnce but\Ærearrang\y\^s \w.
+PntHL:Use\F\w\E\t\û\Qvertical resolu\M of\œ.|MC\ˇ\s o\«Adjust button\Eset\Fnew resolu\M.
+PntHL3/PntHL4/PntHL5:\¬\û\Ø of\œ.
+PntHL6/PntHL7/PntHL8:\¬vertical\Ø of\œ.
+PntHT1:\Sset\ºclear\gdividual pixels\g\f\L \w.
+PntHT2:\Sus\yspray can.|MWritable \rs\Æappear a\ãbottom\Ytoolbox\E\©ow\@spray density\Qradius\Ebe set.
+PntHT3:\Suse anoth\…\L as\fpaintbrush o\«\K one.|MA writable \r\Æappear a\ãbottom\Ytoolbox: \5\¶\ô\Ybrush\‡ it.
+PntHT4:\Scopy\fpor\M\Y\L \w.|M\Ddefin\yarea\Ebe copied, t\øc\ˇ\s\Eposi\M\fcopy.
+PntHT5:\Smove\fpor\M\Y\L \w.|M\Ddefin\yarea\Ebe moved, t\øc\ˇ\s\Epositio\«destina\M.
+PntHT6:\Smov\ywhole \L image.|MDrag \s\ki\«\L \w, and\@\5ire picture\Æbe translated\ki\«\L.
+PntHT7:\S\´\—s.|MTo draw each \—, c\ˇ\s at each end\Y\—.
+PntHT8:\S\´\§ out\—s.|M\4\§, c\ˇ\s at two opposite corners\Y\§\ki\«\L \w.
+PntHT9:\S\´par\©elogram out\—s.|M\4par\©elogram, c\ˇ\s at three differ\5 corners.
+PntHTA:\S\´fill\átriangles.|M\4triangle, c\ˇ\s at each corner\Ytriangle\Ç\L \w.
+PntHTB:\S\´fill\á\§s.|M\4\§, c\ˇ\s at two opposite corners\Y\§\ki\«\L \w.
+PntHTC:\S\´fill\ápar\©elograms.|M\4par\©elogram, c\ˇ\s at three differ\5 corners.
+PntHTD:\Sreplace one \^\k another.|MC\ˇ\s\Ç\L \w and\@\m pixel (and adjac\5\º\©\Ysame \^)\Æbe replaced\k\@\K \´\^.
+PntHTE:\S\´out\— circles.|M\4circle, c\ˇ\s at its c\5re\Qt\øat\f\ä o\«edge.
+PntHTF:\S\´ellipse out\—s.|M\4ellipse, c\ˇ\s at its c\5re, at\f\ä that gives\@width a\ãc\5re,\Qat\f\ä o\«edge.
+PntHTG:\S\´circular arcs.|M\4arc c\ˇ\s a\ãcircle c\5re,\Qa\ãstart\Qend\Yarc.
+PntHTH:\S\´\‚.|MEnt\¶desir\á\‚\Çwritable \r that appears when\Ftool\ü\m, \∆e\ffont, t\øc\ˇ\s\g\f\L \w\E\´the \‚.
+PntHTI:\S\´fill\ácircles.|M\4circle, c\ˇ\s at its c\5re\Qt\øat\f\ä o\«edge.
+PntHTJ:\S\´fill\áellipses.|M\4ellipse, c\ˇ\s at its c\5re, at\f\ä that gives\@width a\ãc\5re,\Qat\f\ä o\«edge.
+PntHTK:\S\´circle segm\5s.|M\4segm\5 c\ˇ\s a\ãcircle c\5re,\Qa\ãstart\Qend\Ysegm\5.
+PntHTL:\S\´circle sectors.|M\4sect\jc\ˇ\s a\ãcircle c\5re,\Qa\ãstart\Qend\Ysector.
+PntHTM:\S\´with\@\K \^.|MThe \K \^\üset separately\˘each \L \w, us\q\@\^s \w (use MENU->Paint->Show \^s).
+PntHTN:\SOR\Œ
+PntHTO:\SAND\Œ
+PntHTP:\SEOR\Œ
+PntHTQ:\Tbrush pane. C\ˇ\s on\fbrush\Euse it. Drag\f\L \È\E\Áe\¢brush.
+NEWCOLH0/NEWCOLH1/NEWCOLH2/NEWCOLH3/NEWCOLH4/NEWCOLH5/NEWCOLH6/NEWCOLH7:\S\ \_\^s.
+NEWPALH0/NEWPALH1/NEWPALH2/NEWPALH3/NEWPALH4:\S\ palette \Õ.
+NEWTRAH0/NEWTRAH1/NEWTRAH2/NEWTRAH3:\S\ transparency mask \Õ.
+ICONB0/FILER00/EDIT00:\Rsee\g\ñ\M on Paint.
+ICONB1:\Scapture part\Y\Í as\f\L.
+ICONB2:\S\N Paint's\¡figura\M.
+ICONB3:\Squit Paint.
+FILER0/EDIT0:\Rshow miscellaneous\g\ñ\M.
+FILER01:\R\å\fbox show\q\X\œ \Z.
+FILER02:\Ssor\ã\Ls by \ô.
+FILER03:\Ssor\ã\Ls by byte size.
+FILER1:\R\u how\@\Ls\g\œ \Z are \Ped.
+FILER10:\Slis\ã\Z\Ù\k just their \ôs.
+FILER11:\Slis\ã\Z\Ù\k full\g\ñ\M.
+FILER12:\S\P\@\Ls\k\@\^s \ê\Û\·.
+FILER2:\R\å\ï for\œ \Z.
+FILER3:\Rperform various\ns on\œ.
+FILER30:\S\B \©\Y\Ls.
+FILER31:\Sclear\@\K \∂.
+FILER32:\Sto \\y\9\L(s)\É\F\Z\Qmove it\íclip\√.
+FILER33:\Sto \⁄\9\L(s)\íclip\√.
+FILER34:\Rcopy\œ as anoth\…\L\kin\F\Z.
+FILER35:\Sto past\yclip\√\Ù\‡\F\Z.
+FILER36:\R\t\ô of\œ.
+FILER37:\S\e\œ.
+FILER3b/EDIT01:\R\å\fbox show\q\X\œ.
+FILER3c/EDIT02:\R\å\fbox\≠\Æenable\âto print\œ.
+FILER4:\R\À\f\L.
+EDIT1:\Rsave\œ.
+EDIT10/FILER38:\R\å\ï\Esav\y\L, separately\Ûrest\Y\L \Z.
+EDIT11/FILER39:\R\å\ï\Eexpor\ã\L as\fPNG \ñt image.
+EDIT12/FILER3a:\R\å\ï\Eexpor\ã\L as\fJPEG \ñt image.
+EDIT13:\R\å\ï,\Esave\œ's palette as\fPalette \Z.
+EDIT2:\R\u\@\^s\Qtools us\ádur\¥paint\q.
+EDIT20:\R\´with simple dith\…(Extend\áColour Fill) patterns.
+EDIT21:\Sselec\ã\^ that was und\¶\ä\…whe\«menu was \åed.
+EDIT22:\Sshow\@\^ \B\j\w for\œ. \ﬂ used\Ese\ã\^s us\áw\øpaint\q.
+EDIT23:\Sshow\@toolbox \w,\≠\üused\E\B paint\¥tools (\´brush, spray can etc).
+EDIT24:\Stoggl\y\^ \B\j\w's size. The sm\© \P\üparticularly useful\˘256-\^ \Ls.
+EDIT25:\R\t\^s\Ypalette (this op\M\Æbe grey\áout if your \L does not have an editable palette).
+EDIT3:\Rperform various\ns o\«whole \L.
+EDIT30:\Sflip\œ \‘.
+EDIT31:\Sflip\œ \ûly.
+EDIT32:\Rrotate\œ.
+EDIT33:\Rstretch\œ \ûly.
+EDIT34:\Rstretch\œ \‘.
+EDIT35:\Rshear\œ.
+EDIT36:\R\tphysical size (\_rows\Qcolumns) of\œ.
+EDIT37:\R\t\û\Qvertical resolu\M of\œ.
+EDIT38:\Rinsert columns\Åpixels\‡\o
+EDIT39:\Rinsert rows\Åpixels\‡\o
+EDIT3a:\R\e columns\Åpixels\É\o
+EDIT3b:\R\e rows\Åpixels\É\o
+EDIT3c:\Sadd\ºremove\fmask\É\œ.|MA mask uses more \≈ but \©ows\@use\Y'transpar\5' \^,\≠\Æbe added\í\^ \m \w.
+EDIT3d:\Sadd\ºremove\fpalette\É\œ. If\f\L has no palette,\@\Í palette \^s are used.
+EDIT4:\Rzoom\g on\œ.
+EDIT5:\Stur\«\€ on\ºoff (indicat\áby\ftick).|M\Rse\ã\^\Y\€.|MThe \€ only appears when\âare zoomed\g by 4:1\ºmore.
+INFO:\V\w \Ps\X Paint.
+SAVEAS:Eith\…drag \s\Û\Z \r\Ea \J \P,\ºfill\Ç\ô\Åa \Z\Qc\ˇ\s on OK,\Esave as\f\L \Z.
+DBOXTCOL:Eith\…drag \s o\«sliders,\ºfill\Çvalues\˘red, green\Qblue,\ºc\ˇ\s on\f\^\á\r,\ºc\ˇ\s o\«arrows,\Qc\ˇ\s on OK,\Eus\y\^ o\«c\5ral\Ú
+MAGNIFIER/CHOYe/CHOYf:Eith\…fill\Çnumerator\Qdenominator,\ºc\ˇ\s o\«arrows,\Eus\ygiven zoom factor.
+PRINT:Fill\Ç\_times\˝\ã\L\Ebe printed, t\øc\ˇ\s on OK.
+CLOSE:\Sansw\¶ques\M.
+QUIT:\Sansw\¶ques\M.
+CHOY:\V\w \2se\ã\Ô state Paint starts up\k.
+CHOY0:\Ssave these \Ns.|M\Asave these \Ns\Qleav\y\w \å.
+CHOYk:\Sclose\F\w\kout \Á\¥any \Ns.|M\Arestor\y\K\˙.
+CHOYl:\V\us wheth\…full\g\ñ\M\Æbe shown.|M\S\b
+CHOY4:\Vshows if \· (rath\…than BBC compatible) \^s\Æbe used.|M\S\b
+CHOY5:\V\ås\fColours \w whe\«Sprite \w\ü\åed.|M\S\b
+CHOY6:\Vreduces\@size\YColours \w.|M\S\b
+CHOY7:\V\óColours \w us\¥an alternative arrangem\5 w\È similar \^s\Qshades are group\átogeth\…(\Ô 256-\^ palettes only).|M\S\b
+CHOY8:\Vrearranges\fuser-defin\ápalette\Çartist-friendly layout when\âfirst edit it,\gstead\Y\Ô layout (full 256-\^ palettes only).|M\S\b
+CHOY9:Paint\Æprompt before rearrang\¥a user-defin\ápalette\‡ artist-friendly order.|M\S\b
+CHOYa:\V\ås\@Tools \w whe\«Sprite \w\ü\åed.|M\S\b
+CHOYb:\Vrequires\ffirst c\ˇo\«Sprite \w\Egai\«input focus,\Qa second c\ˇto apply\@chosen tool.|M\S\b
+CHG0:\Sshow\f\€ whe\«scale\ü4:1\ºbigger.
+CHG1:\Rse\ã\^\Y\€.
+PEH-1:Eith\…drag \s\Û\Z \r\Ea \J \P,\ºfill\Ç\ô\Åa \Z\Qc\ˇ\s on OK,\Esav\y\Z.
+PEH3:Drag\@\r\Esave\ºexpor\ã\Z.
+PEH0:\Ssav\y\Z.
+PEH2:Ent\…a \Z\ô.
+PEP6:Ent\…a compression level\†output image\É 0 (uncompressed, fast)\E9 (most compressed, slower).
+PEP8:\Sin\≤compression level.
+PEP7:\Sde\≤compression level.
+PEJ6:Ent\…a quality\†output image\É 0 (worst)\E100 (best).
+PEJ8:\Sin\≤output image quality.
+PEJ7:\Sde\≤output image quality.
+PEX0:Export failed: unable\Egenerate\fpalette\†\L
+PEX1:T\È\üno \ê image\Eexport
+PEX2:T\È\üno \ê image\Esave
+
+PaintHelp:a!Paint G runAPaint d' o– 
+PaintSyntax:ÊPaint 
+_Version:2.59 (01-Nov-25)

@@ -1,0 +1,155 @@
+REM
+REM CDDL HEADER START
+REM
+REM The contents of this file are subject to the terms of the
+REM Common Development and Distribution License (the "Licence").
+REM You may not use this file except in compliance with the Licence.
+REM
+REM You can obtain a copy of the licence at
+REM RiscOS/Sources/HWSupport/SD/SDIODriver/LICENCE.
+REM See the Licence for the specific language governing permissions
+REM and limitations under the Licence.
+REM
+REM When distributing Covered Code, include this CDDL HEADER in each
+REM file and include the Licence file. If applicable, add the
+REM following below this CDDL HEADER, with the fields enclosed by
+REM brackets "[]" replaced with your own identifying information:
+REM Portions Copyright [yyyy] [name of copyright owner]
+REM
+REM CDDL HEADER END
+REM
+REM Copyright 2021 RISC OS Developments Ltd.  All rights reserved.
+REM Use is subject to license terms.
+REM
+ON ERROR ON ERROR OFF:REPORT:PRINT;" at line ";ERL:END
+PRINT "Scatter/gather test"
+INPUT "Bus? "bus%
+INPUT "Slot? "slot%
+SYS"SDIO_Enumerate",1,,(bus%<<8)+slot% TO ,,r2%
+rca%=r2%>>>16
+PRINT '"RCA is &";RIGHT$("000"+STR$~rca%,4)
+
+REM Allocate 4 sector-size buffers. One will be used at each byte alignment.
+DIM buf%(3)
+FOR i%=0 TO 3
+  DIM tmp% 512+12
+  FOR o%=0 TO 512+8 STEP 4:tmp%!o%=-1:NEXT
+  tmp%=(tmp% + 7) AND NOT 3
+  buf%(i%) = tmp% + i%
+  PRINT "buffer ";i%;" = ";STR$~buf%(i%)
+NEXT
+
+REM We will reference each buffer both directly and via a scatter/gather list.
+REM Assuming the implementation doesn't simplify the list as we go along, we can
+REM arrange for it to be contiguous, which makes comparing results easier.
+REM If we make scatter entries cover 8,0,1,2,3,4,5,6,7,8,0,1,2,3,4,5,6,7,8,...
+REM bytes, this pattern will reach 512 bytes (8+14*36) after
+REM 127 entries (1+14*9). For extra fun, arrange for a loop in the list.
+DIM scatter%(4)
+FOR i%=0 TO 3
+  DIM s% 129*8
+  PRINT "scatter list ";i%;" = ";STR$~s%;" starting at ";STR$~(s%+127*8)
+  s%+=127*8
+  b%=buf%(i%)
+  scatter%(i%)=s%
+  s%!0=b%:s%!4=8:b%+=8:s%+=8
+  s%!0=-128*8:s%!4=0:s%+=s%!0
+  FOR y%=1 TO 14
+    FOR x%=0 TO 8
+      s%!0=b%:s%!4=x%:b%+=x%:s%+=8
+    NEXT
+  NEXT
+NEXT
+
+DIM blk% 12, wrblk% 12
+blk%!0=(9<<12)+17
+blk%!4=0
+wrblk%!0=(9<<12)+24
+wrblk%!4=1
+
+PROCselect
+ON ERROR ON ERROR OFF:PROCdeselect:REPORT:PRINT;" at line ";ERL:END
+
+REM First try loading sector 0 direct to buffers at each alignment, and ensure
+REM the result is the same.
+PROCfill(buf%(0))
+SYS"SDIO_Op",&10E0000+(bus%<<8)+slot%,12,blk%,buf%(0),512,100
+FOR i%=1 TO 3
+  PRINT "Check direct load at offset ";i%
+  PROCfill(buf%(i%))
+  SYS"SDIO_Op",&10E0000+(bus%<<8)+slot%,12,blk%,buf%(i%),512,100
+  PROCcompare(buf%(0),buf%(i%))
+NEXT
+
+REM Test scatter loads
+PRINT "Check scatter load at offset 0"
+PROCfill(buf%(0))
+SYS"SDIO_Op",&50E0000+(bus%<<8)+slot%,12,blk%,scatter%(0),512,100
+PROCcompare(buf%(1),buf%(0))
+FOR i%=1 TO 3
+  PRINT "Check scatter load at offset ";i%
+  PROCfill(buf%(i%))
+  SYS"SDIO_Op",&50E0000+(bus%<<8)+slot%,12,blk%,scatter%(i%),512,100
+  PROCcompare(buf%(0),buf%(i%))
+NEXT
+
+REM Test direct stores of buffers at each alignment
+DIM echo% 512
+blk%!4=1
+FOR i%=0 TO 3
+  PRINT "Check direct store at offset ";i%
+  PROCfill_random(buf%(i%))
+  SYS"SDIO_Op",&20E0000+(bus%<<8)+slot%,12,wrblk%,buf%(i%),512,100
+  SYS"SDIO_Op",&10E0000+(bus%<<8)+slot%,12,blk%,echo%,512,100
+  PROCcompare(buf%(i%),echo%)
+NEXT
+
+REM Test scatter stores of buffers at each alignment
+FOR i%=0 TO 3
+  PRINT "Check scatter store at offset ";i%
+  PROCfill_random(buf%(i%))
+  SYS"SDIO_Op",&60E0000+(bus%<<8)+slot%,12,wrblk%,scatter%(i%),512,100
+  SYS"SDIO_Op",&10E0000+(bus%<<8)+slot%,12,blk%,echo%,512,100
+  PROCcompare(buf%(i%),echo%)
+NEXT
+
+PROCdeselect
+END
+
+DEF PROCselect
+LOCAL blk%
+DIM blk% LOCAL 12
+blk%!0=7
+blk%!4=rca%<<16
+SYS"SDIO_Op",&E0000+(bus%<<8)+slot%,12,blk%,,,100
+ENDPROC
+
+DEF PROCdeselect
+LOCAL blk%
+DIM blk% LOCAL 8
+blk%!0=7
+blk%!4=0
+SYS"SDIO_Op",(bus%<<8)+slot%,8,blk%,,,100
+ENDPROC
+
+DEF PROCfill(a%)
+LOCAL i%
+FOR i%=0 TO 508 STEP 4
+  a%!i%=-1
+NEXT
+ENDPROC
+
+DEF PROCfill_random(a%)
+IF RND(-TIME)
+LOCAL i%
+FOR i%=0 TO 508 STEP 4
+  a%!i%=RND(65536)+(RND(65536)<<16)
+NEXT
+ENDPROC
+
+DEF PROCcompare(a%,b%)
+LOCAL i%
+FOR i%=0 TO 508 STEP 4
+  IF a%!i%<>b%!i% THEN ERROR 1,"Difference between &"+STR$~a%+" and &"+STR$~b%+" at offset &"+STR$~i%
+NEXT
+ENDPROC

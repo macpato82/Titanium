@@ -1,0 +1,50 @@
+REM
+REM CDDL HEADER START
+REM
+REM The contents of this file are subject to the terms of the
+REM Common Development and Distribution License (the "Licence").
+REM You may not use this file except in compliance with the Licence.
+REM
+REM You can obtain a copy of the licence at
+REM RiscOS/Sources/HWSupport/SD/SDIODriver/LICENCE.
+REM See the Licence for the specific language governing permissions
+REM and limitations under the Licence.
+REM
+REM When distributing Covered Code, include this CDDL HEADER in each
+REM file and include the Licence file. If applicable, add the
+REM following below this CDDL HEADER, with the fields enclosed by
+REM brackets "[]" replaced with your own identifying information:
+REM Portions Copyright [yyyy] [name of copyright owner]
+REM
+REM CDDL HEADER END
+REM
+REM Copyright 2021 RISC OS Developments Ltd.  All rights reserved.
+REM Use is subject to license terms.
+REM
+ON ERROR ON ERROR OFF:REPORT:PRINT;" at line ";ERL:END
+PRINT "Large write test"
+PRINT "BE SURE YOU DON'T CARE ABOUT THE CONTENTS OF THE DEVICE!"
+INPUT "Drive? "dr%
+INPUT "Number of sectors to store: "sectors%
+
+DIM out% 512*sectors%, back% 512*sectors%
+PROCfill_random(out%)
+SYS"SDFS_DiscOp",,2,dr%<<29,out%,512*sectors%
+SYS"SDFS_DiscOp",,1,dr%<<290,back%,512*sectors%
+PROCcompare(out%,back%)
+END
+
+DEF PROCfill_random(a%)
+IF RND(-TIME)
+LOCAL i%
+FOR i%=0 TO 512*sectors%-4 STEP 4
+  a%!i%=RND(65536)+(RND(65536)<<16)
+NEXT
+ENDPROC
+
+DEF PROCcompare(a%,b%)
+LOCAL i%
+FOR i%=0 TO 512*sectors%-4 STEP 4
+  IF a%!i%<>b%!i% THEN ERROR 1,"Difference between &"+STR$~a%+" and &"+STR$~b%+" at offset &"+STR$~i%
+NEXT
+ENDPROC

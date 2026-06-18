@@ -1,0 +1,9 @@
+WindowManager -options OPTIONS=Ursula
+FPEmulator -options FPE_APCS=3/32bit FPEANCHOR=High
+InternationalKeyboard -options KEYBOARD=All
+ScrSaver -options SCRSAVERAPP=No
+DOSFS -options PCMCIA=TRUE
+SCSIFiler -options ASFLAGS="-PD \"SCSI SETL {TRUE}\"" TEMPLATES=yes
+SDFSFiler -options ASFLAGS="-PD \"SDFS SETL {TRUE}\"" TEMPLATES=yes
+LanManFS -options OPTIONS=-DCHECK_ARMBOOT_EXISTS ROMSPRITES=TRUE
+DHCP -options OPTIONS=-DMINIMUM_OPTIONS_LENGTH=4

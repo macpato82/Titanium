@@ -1,0 +1,8 @@
+# RISC OS source tree — store every file byte-exact.
+#
+# RISC OS files carry meaning in their raw bytes (and the ,xxx filetype suffix
+# in the filename). Git must NEVER apply CRLF/LF translation or treat anything
+# as text, or the tree will be silently corrupted on checkout on Windows.
+* -text
+* -crlf
+* binary

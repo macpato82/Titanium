@@ -1,0 +1,96 @@
+/*
+ *  Portable interface to the CPU cycle counter
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+#include "common.h"
+
+#ifndef RISCOS
+#error "This is a platform specific file for RISC OS only"
+#endif
+
+#if defined(MBEDTLS_TIMING_C)
+
+#include "mbedtls/timing.h"
+
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <time.h>
+
+struct _hr_time {
+    struct timeval start;
+};
+
+unsigned long mbedtls_timing_get_timer(struct mbedtls_timing_hr_time *val, int reset)
+{
+    struct _hr_time t;
+
+    if (reset) {
+        gettimeofday(&t.start, NULL);
+        memcpy(val, &t, sizeof(struct _hr_time));
+        return 0;
+    } else {
+        unsigned long delta;
+        struct timeval now;
+        /* We can't safely cast val because it may not be aligned, so use memcpy */
+        memcpy(&t, val, sizeof(struct _hr_time));
+        gettimeofday(&now, NULL);
+        delta = ((now.tv_sec - t.start.tv_sec) * 1000ul) +
+                ((now.tv_usec - t.start.tv_usec) / 1000);
+        return delta;
+    }
+}
+
+/*
+ * Set delays to watch
+ */
+void mbedtls_timing_set_delay(void *data, uint32_t int_ms, uint32_t fin_ms)
+{
+    mbedtls_timing_delay_context *ctx = (mbedtls_timing_delay_context *) data;
+
+    ctx->int_ms = int_ms;
+    ctx->fin_ms = fin_ms;
+
+    if (fin_ms != 0) {
+        mbedtls_timing_get_timer(&ctx->timer, 1);
+    }
+}
+
+/*
+ * Get number of delays expired
+ */
+int mbedtls_timing_get_delay(void *data)
+{
+    mbedtls_timing_delay_context *ctx = (mbedtls_timing_delay_context *) data;
+    unsigned long elapsed_ms;
+
+    if (ctx->fin_ms == 0) {
+        return -1;
+    }
+
+    elapsed_ms = mbedtls_timing_get_timer(&ctx->timer, 0);
+
+    if (elapsed_ms >= ctx->fin_ms) {
+        return 2;
+    }
+
+    if (elapsed_ms >= ctx->int_ms) {
+        return 1;
+    }
+
+    return 0;
+}
+
+/*
+ * Get the final delay.
+ */
+uint32_t mbedtls_timing_get_final_delay(const mbedtls_timing_delay_context *data)
+{
+    return data->fin_ms;
+}
+#endif /* MBEDTLS_TIMING_C */

@@ -1,0 +1,111 @@
+/*
+ * Created by cmhg vsn 5.51 [14 Mar 2026]
+ */
+
+#ifndef __cmhg_XHCIDriverHdr_h
+#define __cmhg_XHCIDriverHdr_h
+
+#ifndef __kernel_h
+#include "kernel.h"
+#endif
+
+#define CMHG_VERSION 551
+
+#define Module_Title                     "XHCIDriver"
+#define Module_Help                      "XHCIDriver"
+#define Module_VersionString             "0.32"
+#define Module_VersionNumber             32
+#ifndef Module_Date
+#define Module_Date                      "06 Nov 2024"
+#endif
+
+
+/*
+ * Initialisation code
+ * ===================
+ *
+ * Return NULL if your initialisation succeeds. Return the special value
+ * defined below if your initialisation succeeds but you do not require
+ * static data for this instantiation (including shared library static
+ * data - you should assume that any shared library call might need to use
+ * static data). Otherwise return a pointer to an error block.
+ * cmd_tail points to the string of arguments with which the module is
+ * invoked (may be "", and is control-terminated, not zero terminated).
+ * podule_base is the 'R11' value established by module initialisation
+ * which is the podule base address if the code has been invoked from a
+ * podule, otherwise it is the number of other instantiations of the module.
+ * pw is the 'R12' value established by module initialisation. You may
+ * assume nothing about its value (in fact it points to some RMA space
+ * claimed and used by the module veneers). All you may do is pass it back
+ * for your module veneers via an intermediary such as SWI OS_CallEvery
+ * (use _swix() to issue the SWI call).
+ */
+#define initialise_NO_STATIC_DATA ((_kernel_oserror *) -1)
+
+_kernel_oserror *xhcidriver_init(const char *cmd_tail, int podule_base, void *pw);
+
+
+/*
+ * Finalisation code
+ * =================
+ *
+ * Return NULL if your finalisation succeeds. Otherwise return a pointer to
+ * an error block if your finalisation handler does not wish to die (e.g.
+ * toolbox modules return a 'Task(s) active' error).
+ * fatal, podule and pw are the values of R10, R11 and R12 (respectively)
+ * on entry to the finalisation code.
+ */
+_kernel_oserror *xhcidriver_final(int fatal, int podule, void *pw);
+
+
+/*
+ * Service call handler
+ * ====================
+ *
+ * Return values should be poked directly into r->r[n]; the right
+ * value/register to use depends on the service number (see the relevant
+ * RISC OS Programmer's Reference Manual section for details).
+ * pw is the private word (the 'R12' value).
+ */
+void xhcidriver_services(int service_number, _kernel_swi_regs *r, void *pw);
+
+
+/*
+ * Vector handlers
+ * ===============
+ *
+ * This is the name of the vector handler entry veneer
+ * compiled by CMHG. Use this name as an argument to SWI
+ * OS_Claim. (EventV claimants should use a CMHG event handler).
+ *
+ * Note that vector handlers were previously called IRQ handlers
+ * and were documented as being for attaching to IrqV. IrqV has
+ * long been deprecated; you should use OS_ClaimDeviceVector and
+ * a CMHG generic veneer instead.
+ */
+extern void xhcidriver_irq_entry(void);
+
+/*
+ * This is the handler function you must write to handle the
+ * vector for which xhcidriver_irq_entry is the veneer function.
+ *
+ * If a handler function is installed onto a vector, then:
+ *   Return VECTOR_CLAIM to intercept the call.
+ *   Return VECTOR_PASSON to pass on the call.
+ * If you use a vector handler veneer for any other purpose, always
+ * return non-0, and consider the use of a generic veneer instead.
+ * It is not currently possible to return an error from a vector
+ * handler.
+ *
+ * 'r' points to a vector of words containing the values of R0-R9 on
+ * entry to the veneer. If r is updated, the updated values will be
+ * loaded into R0-R9 on return from the handler.
+ *
+ * pw is the private word pointer ('R12') value with which the
+ * vector entry veneer is called.
+ */
+#define VECTOR_CLAIM  0
+#define VECTOR_PASSON 1
+int xhcidriver_irq_handler(_kernel_swi_regs *r, void *pw);
+
+#endif

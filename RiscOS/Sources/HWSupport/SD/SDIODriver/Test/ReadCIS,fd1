@@ -1,0 +1,99 @@
+REM
+REM CDDL HEADER START
+REM
+REM The contents of this file are subject to the terms of the
+REM Common Development and Distribution License (the "Licence").
+REM You may not use this file except in compliance with the Licence.
+REM
+REM You can obtain a copy of the licence at
+REM RiscOS/Sources/HWSupport/SD/SDIODriver/LICENCE.
+REM See the Licence for the specific language governing permissions
+REM and limitations under the Licence.
+REM
+REM When distributing Covered Code, include this CDDL HEADER in each
+REM file and include the Licence file. If applicable, add the
+REM following below this CDDL HEADER, with the fields enclosed by
+REM brackets "[]" replaced with your own identifying information:
+REM Portions Copyright [yyyy] [name of copyright owner]
+REM
+REM CDDL HEADER END
+REM
+REM Copyright 2021 RISC OS Developments Ltd.  All rights reserved.
+REM Use is subject to license terms.
+REM
+ON ERROR ON ERROR OFF:REPORT:PRINT;" at line ";ERL:END
+PRINT "CIS structure dumper"
+INPUT "Bus? "bus%
+INPUT "Slot? "slot%
+INPUT "Function? "function%
+SYS"SDIO_Enumerate",1,,(bus%<<8)+slot% TO ,,r2%
+rca%=r2%>>>16
+PRINT '"RCA is &";RIGHT$("000"+STR$~rca%,4)
+PROCselect
+ptr%=&100*function%+9
+cis%=FNread(ptr%)+(FNread(ptr%+1)<<8)+(FNread(ptr%+2)<<16)
+cis$=RIGHT$("0000"+STR$~cis%,5)
+IF cis%<&1000 OR cis%>=&18000 THEN
+  PRINT "CIS address &";cis$;" appears invalid"
+ELSE
+  PRINT "CIS is stored at &";cis$
+  tuple%=cis%
+  length%=0
+  REPEAT
+    code%=FNread(tuple%)
+    IF code%<&FF THEN
+      length%=FNread(tuple%+1)
+      PRINT "Tuple code &";RIGHT$("0"+STR$~code%,2);", length ";length%
+      body%=tuple%+2
+      row%=body%
+      WHILE row%<body%+length%
+        ptr%=row%
+        WHILE ptr%<body%+length% AND ptr%<row%+16
+          PRINT ;RIGHT$("0"+STR$~FNread(ptr%),2);" ";
+          ptr%+=1
+        ENDWHILE
+        WHILE ptr%<row%+16
+          PRINT ;"   ";
+          ptr%+=1
+        ENDWHILE
+        PRINT ;": ";
+        ptr%=row%
+        WHILE ptr%<body%+length% AND ptr%<row%+16
+          c%=FNread(ptr%)
+          IF c%>=32 AND c%<127 THEN VDU c% ELSE PRINT ;".";
+          ptr%+=1
+        ENDWHILE
+        WHILE ptr%<row%+16
+          PRINT ;" ";
+          ptr%+=1
+        ENDWHILE
+        PRINT
+        row%=row%+16
+      ENDWHILE
+      tuple%=body%+length%
+    ENDIF
+  UNTIL code%=&FF OR length%=&FF
+ENDIF
+PROCdeselect
+END
+
+DEF PROCselect
+DIM blk% LOCAL 12
+blk%!0=7
+blk%!4=rca%<<16
+SYS"SDIO_Op",&E0000+(bus%<<8)+slot%,12,blk%,,,100
+ENDPROC
+
+DEF PROCdeselect
+DIM blk% LOCAL 8
+blk%!0=7
+blk%!4=0
+SYS"SDIO_Op",(bus%<<8)+slot%,8,blk%,,,100
+ENDPROC
+
+DEF FNread(reg%)
+DIM blk% LOCAL 12
+blk%!0=52
+blk%!4=reg%<<9
+SYS"SDIO_Op",&160000+(bus%<<8)+slot%,12,blk%,,,100
+=blk%?8

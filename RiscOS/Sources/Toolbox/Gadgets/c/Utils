@@ -1,0 +1,75 @@
+/* Copyright 1997 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Modernised 2026 (rewritten from s.Utils; behaviour unchanged). */
+/* Title:   Utils.c
+ * Purpose: Small Wimp/Toolbox helper veneers for the TextGadgets module.
+ *          Previously hand-written assembler (s.Utils).
+ */
+
+#include <stddef.h>          /* NULL */
+
+#include "kernel.h"
+#include "swis.h"
+
+#include "tboxlibint/twimp.h"
+#include "Utils.h"
+
+/* Window_GetWimpHandle method for Toolbox_ObjectMiscOp. */
+#define Window_GetWimpHandle 0
+
+/* Converts a work-area box to screen coordinates for the given window. */
+_kernel_oserror *work_to_screen_handle(wimp_Bbox *visible,
+        wimp_Bbox *work, int window_handle)
+{
+  wimp_GetWindowState state;
+  _kernel_oserror *e;
+  int dx, dy;
+
+  state.open.window_handle = window_handle;
+  e = _swix(Wimp_GetWindowState, _IN(1), &state);
+  if (e)
+    return e;
+
+  /* Screen origin of the work area: visible.xmin - scroll_x (and likewise
+   * visible.ymax - scroll_y for the top). */
+  dx = state.open.visible_area.xmin - state.open.scx;
+  dy = state.open.visible_area.ymax - state.open.scy;
+
+  visible->xmin = work->xmin + dx;
+  visible->ymin = work->ymin + dy;
+  visible->xmax = work->xmax + dx;
+  visible->ymax = work->ymax + dy;
+
+  return NULL;
+}
+
+/* Gets the underlying Wimp window handle for a Toolbox window object. */
+_kernel_oserror *window_get_wimp_handle(unsigned int flags,
+        ObjectID window, int *window_handle)
+{
+  _kernel_oserror *e;
+  int handle;
+
+  e = _swix(Toolbox_ObjectMiscOp, _INR(0,2) | _OUT(0),
+            flags, window, Window_GetWimpHandle,
+            &handle);
+  if (e)
+    return e;
+
+  if (window_handle)
+    *window_handle = handle;
+
+  return NULL;
+}

@@ -1,0 +1,301 @@
+/*
+ * CDDL HEADER START
+ *
+ * The contents of this file are subject to the terms of the
+ * Common Development and Distribution License (the "Licence").
+ * You may not use this file except in compliance with the Licence.
+ *
+ * You can obtain a copy of the licence at
+ * cddl/RiscOS/Sources/HWSupport/SD/SDIODriver/LICENCE.
+ * See the Licence for the specific language governing permissions
+ * and limitations under the Licence.
+ *
+ * When distributing Covered Code, include this CDDL HEADER in each
+ * file and include the Licence file. If applicable, add the
+ * following below this CDDL HEADER, with the fields enclosed by
+ * brackets "[]" replaced with your own identifying information:
+ * Portions Copyright [yyyy] [name of copyright owner]
+ *
+ * CDDL HEADER END
+ */
+/*
+ * Copyright 2021 RISC OS Developments Ltd.  All rights reserved.
+ * Use is subject to license terms.
+ */
+
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include "swis.h"
+
+#include "Global/Keyboard.h"
+#include "Global/RISCOS.h"
+#include "Global/HALDevice.h"
+#include "Interface/SDIO.h"
+#include "Interface/SDHCIDevice.h"
+
+#include "DebugLib/DebugLib.h"
+
+#include "FakeCardIntHdr.h"
+
+#undef dprintf
+#ifdef DEBUGLIB
+#define dprintf(...)    _dprintf("", __VA_ARGS__)
+#else
+#define dprintf(...)
+#endif
+
+static bool on_vectors;
+static bool two_handlers;
+static void *module_pw;
+static struct
+{
+  bool valid;
+  uint8_t type;
+  bool supports_interrupts;
+} bus_info[256];
+static int bus;
+
+_kernel_oserror *initialise(const char *cmd_tail, int podule_base, void *pw)
+{
+  (void) cmd_tail;
+  (void) podule_base;
+  module_pw = pw;
+
+#ifdef DEBUGLIB
+  /* Set up debugging */
+  debug_initialise("FakeCardInt", "", "");
+  debug_set_device(DADEBUG_OUTPUT);
+  debug_set_unbuffered_files(TRUE);
+#endif
+
+  int key = 0, bus;
+  for (bus = 0; bus < 256; ++bus)
+  {
+    sdhcidevice_t *dev;
+    _swix(OS_Hardware, _INR(0,1)|_IN(8)|_OUTR(1,2),
+         HALDeviceSDHCI_MajorVersion_Soft2 + HALDeviceType_ExpCtl + HALDeviceExpCtl_SDIO, key, 5, &key, &dev);
+    if (key == -1u)
+      break;
+    bus_info[bus].valid = true;
+    bus_info[bus].type = dev->dev.version >> 16;
+    bus_info[bus].supports_interrupts = dev->dev.devicenumber != -1u &&
+        ((bus_info[bus].type == 0 && (dev->dev.version & 0xFFFFu) >= HALDeviceSDHCI_MinorVersion_OriginalValidDevNo) ||
+         (bus_info[bus].type == 1 && (dev->dev.version & 0xFFFFu) >= HALDeviceSDHCI_MinorVersion_SoftValidDevNo) ||
+         (bus_info[bus].type == 2));
+  }
+
+  return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+  (void) argc;
+  (void) argv;
+  _kernel_oserror *e = NULL;
+  uint32_t rca;
+  uint32_t cmdres[3];
+
+  printf("Test SDIO interrupt dispatch\n");
+  do
+  {
+    printf("\n");
+    printf("Available buses:\n");
+    for (bus = 0; bus < 256 && bus_info[bus].valid; ++bus)
+    {
+      if (!bus_info[bus].supports_interrupts)
+        printf("  %u - won't work because host controller interrupt not available\n", bus);
+      else if (bus_info[bus].type == 1)
+        printf("  %u - won't work because card interrupt proxying not available\n", bus);
+      else
+        printf("  %u\n", bus);
+    }
+    printf("Which bus to test? ");
+    scanf(" %i", &bus);
+  } while (bus >= 256);
+  getchar(); // swallow \n not consumed by scanf
+
+  printf("\n");
+  printf("Slot 0 is assumed\n");
+  _swi(SDIO_Enumerate, _INR(0,2)|_OUT(2), SDIOEnumerate_Units, 0, bus << SDIOEnumerate_BusShift, &rca);
+  rca >>= 16;
+  printf("Card has RCA %04X\n", rca);
+
+  printf("\n");
+  printf("If handlers are installed for multiple functions on the card, we defeat the\n"
+         "optimisation that avoids querying the card about which function was\n"
+         "responsible, so the card interrupt should be considered as spurious and thus\n"
+         "rejected by SDIODriver.\n"
+         "Register handlers for multiple functions? [N/y] ");
+  int c;
+  _swi(OS_ReadC, _OUT(0), &c);
+  _swi(SDIO_ClaimDeviceVector, _INR(0,2),
+      (1 << SDIOCDV_UnitShift) |
+      (0 << SDIOCDV_SlotShift) |
+      (bus << SDIOCDV_BusShift),
+      interrupt_veneer,
+      module_pw);
+  if (c == 'y' || c == 'Y')
+  {
+    printf("Y\n");
+    two_handlers = true;
+    _swi(SDIO_ClaimDeviceVector, _INR(0,2),
+        (2 << SDIOCDV_UnitShift) |
+        (0 << SDIOCDV_SlotShift) |
+        (bus << SDIOCDV_BusShift),
+        interrupt_veneer,
+        module_pw);
+  }
+  else
+  {
+    printf("N\n");
+  }
+  _swix(OS_Claim, _INR(0,2), KEYV, keyv_veneer, module_pw);
+  on_vectors = true;
+
+  printf("\n"
+         "Now press right-shift to fake an interrupt, or:\n"
+         "[L]ock slot, [U]nlock slot, [S]elect card, [D]eselect card,\n"
+         "[K]eep bus busy with foreground operations for 10 seconds\n"
+         "A * will be printed each time an interrupt handler fires\n");
+  while (true)
+  {
+    _swi(OS_ReadC, _OUT(0), &c);
+    switch (c &~ 32)
+    {
+      case 'C':
+        _swix(OS_WriteI+12, 0); // clear screen
+        break;
+      case 'L':
+        printf("L");
+        e = _swix(SDIO_Control, _INR(0,1), SDIOControl_TryLock, bus << SDIOControl_BusShift);
+        break;
+      case 'U':
+        printf("U");
+        e = _swix(SDIO_Control, _INR(0,1), SDIOControl_Unlock, bus << SDIOControl_BusShift);
+        break;
+      case 'S':
+        printf("S");
+        cmdres[0] = CMD7_SELECT_DESELECT_CARD;
+        cmdres[1] = rca << 16;
+        e = _swix(SDIO_Op, _INR(0,2)|_IN(5), (bus << SDIOOp_BusShift) | SDIOOp_R1b, 12, cmdres, 100);
+        break;
+      case 'D':
+        printf("D");
+        cmdres[0] = CMD7_SELECT_DESELECT_CARD;
+        cmdres[1] = 0;
+        e = _swix(SDIO_Op, _INR(0,2)|_IN(5), (bus << SDIOOp_BusShift) | SDIOOp_R0, 8, cmdres, 100);
+        break;
+      case 'K':
+        printf("K");
+        _swix(SDIO_Control, _INR(0,1), SDIOControl_Unlock, bus << SDIOControl_BusShift); /* in case it was left locked - else extra unlock is harmless */
+        int timeout;
+        _swi(OS_ReadMonotonicTime, _OUT(0), &timeout);
+        for (int seconds = 10; seconds > 0; --seconds)
+        {
+          timeout += 100;
+          int time;
+          do
+          {
+            /* Since we are operating in the foreground here, we can use blocking lock-acquires */
+            dprintf("L1  \n");
+            _swix(SDIO_Control, _INR(0,1), SDIOControl_Lock, bus << SDIOControl_BusShift);
+            cmdres[0] = CMD7_SELECT_DESELECT_CARD;
+            cmdres[1] = rca << 16;
+            dprintf("O1  \n");
+            _swix(SDIO_Op, _INR(0,2)|_IN(5), (bus << SDIOOp_BusShift) | SDIOOp_R1b, 12, cmdres, 100);
+            dprintf("U1  \n");
+            _swix(SDIO_Control, _INR(0,1), SDIOControl_Unlock, bus << SDIOControl_BusShift);
+            dprintf("L2  \n");
+            _swix(SDIO_Control, _INR(0,1), SDIOControl_Lock, bus << SDIOControl_BusShift);
+            cmdres[0] = CMD7_SELECT_DESELECT_CARD;
+            cmdres[1] = 0;
+            dprintf("O2  \n");
+            _swix(SDIO_Op, _INR(0,2)|_IN(5), (bus << SDIOOp_BusShift) | SDIOOp_R0, 8, cmdres, 100);
+            dprintf("U2  \n");
+            _swix(SDIO_Control, _INR(0,1), SDIOControl_Unlock, bus << SDIOControl_BusShift);
+            _swix(OS_ReadMonotonicTime, _OUT(0), &time);
+          } while ((timeout - time) > 0);
+          printf(".");
+        }
+        break;
+    }
+    if (e)
+    {
+      printf(" %s ", e->errmess);
+      e = NULL;
+    }
+  }
+}
+
+_kernel_oserror *finalise(int fatal, int podule, void *pw)
+{
+  (void) fatal;
+  (void) podule;
+  (void) pw;
+
+  if (on_vectors)
+  {
+    _swix(OS_Release, _INR(0,2), KEYV, keyv_veneer, module_pw);
+    if (two_handlers)
+      _swix(SDIO_ReleaseDeviceVector, _INR(0,2),
+          (2 << SDIOCDV_UnitShift) |
+          (0 << SDIOCDV_SlotShift) |
+          (bus << SDIOCDV_BusShift),
+          interrupt_veneer,
+          module_pw);
+    _swix(SDIO_ReleaseDeviceVector, _INR(0,2),
+        (1 << SDIOCDV_UnitShift) |
+        (0 << SDIOCDV_SlotShift) |
+        (bus << SDIOCDV_BusShift),
+        interrupt_veneer,
+        module_pw);
+  }
+
+  return NULL;
+}
+
+int keyv_handler(_kernel_swi_regs *r, void *pw)
+{
+  (void) pw;
+  if (r->r[0] == KeyV_KeyDown &&
+      r->r[1] == KeyNo_ShiftRight)
+  {
+    _swix(SDIO_Control, _INR(0,2),
+        SDIOControl_FakeSDIOCardInt,
+        bus << SDIOControl_BusShift,
+        1);
+  }
+  return 1; // always pass on
+}
+
+_kernel_oserror *interrupt_handler(_kernel_swi_regs *r, void *pw)
+{
+  (void) r;
+  (void) pw;
+  _swix(OS_AddCallBack, _INR(0,1), callback_veneer, module_pw);
+  /* It's important that the interrupt acknowledge is *not* deferred until the
+   * transient callback, because the foreground could be spinning in SVC mode
+   * inside SDIO_Control trying to acquire the slot, and the callback won't be
+   * scheduled until we return to USR mode - resulting in deadlock. For a
+   * real-world interrupt handler, that means it probably needs to perform the
+   * SD operations to quieten the interrupt (for which the below
+   * SDIOControl_FakeSDIOCardInt call is a stand-in) either using background
+   * operations directly or in an RTSupport thread. */
+  _swix(SDIO_Control, _INR(0,2),
+      SDIOControl_FakeSDIOCardInt,
+      bus << SDIOControl_BusShift,
+      0);
+  _swix(SDIO_Control, _INR(0,1),
+      SDIOControl_AckSDIOCardInt,
+      bus << SDIOControl_BusShift);
+  return NULL;
+}
+
+_kernel_oserror *callback_handler(_kernel_swi_regs *r, void *pw)
+{
+  (void) r;
+  (void) pw;
+  printf("*");
+  return NULL;
+}

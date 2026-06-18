@@ -1,0 +1,64 @@
+# ===========================================================================
+#  Titanium RISC OS source tree (modernisation) — ignore rules
+# ===========================================================================
+#
+#  Versions the SOURCE of the tree plus the modernisation work.  It must NOT
+#  contain build output, logs, Python caches, or the commercial Acorn/DDE host
+#  tools and pre-built host libraries (commercial — do not redistribute).
+#
+# ---------------------------------------------------------------------------
+#  Commercial host toolchain / pre-built libraries (NEVER commit)
+# ---------------------------------------------------------------------------
+RiscOS/Library/Acorn/HostLibs/
+RiscOS/Library/Acorn/amu
+RiscOS/Library/Acorn/cc
+RiscOS/Library/Acorn/c++
+RiscOS/Library/Acorn/cfront
+RiscOS/Library/Acorn/cmhg
+RiscOS/Library/Acorn/decaof
+RiscOS/Library/Acorn/libfile
+RiscOS/Library/Acorn/link
+RiscOS/Library/Acorn/objasm
+RiscOS/Library/Acorn/objsize
+RiscOS/Library/Acorn/ResGen
+
+# ---------------------------------------------------------------------------
+#  Build output
+# ---------------------------------------------------------------------------
+RiscOS/Install/
+RiscOS/Export/
+
+# Per-component intermediate output dirs (filetype-suffixed object trees)
+**/o/
+**/oz/
+**/oz32/
+**/oz64/
+**/od/
+**/aof/
+**/aof32/
+**/aif/
+**/gpa/
+**/rm/
+**/rm32/
+**/rm64/
+**/linked/
+**/i/
+**/derived/
+**/map.*
+**/linked.*
+
+# ---------------------------------------------------------------------------
+#  Nested repositories tracked separately (do not embed as gitlinks)
+# ---------------------------------------------------------------------------
+# The C Territory Manager has its own repo (macpato82/TerritoryManager); it is
+# nested here in the working tree but versioned independently, not in this repo.
+RiscOS/Sources/Internat/Territory/TerritoryManagerC/
+
+# ---------------------------------------------------------------------------
+#  Logs, caches, scratch
+# ---------------------------------------------------------------------------
+__pycache__/
+*.pyc
+**/Log
+TextFile
+*.log

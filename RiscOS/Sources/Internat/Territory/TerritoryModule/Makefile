@@ -1,0 +1,77 @@
+# Copyright 1998 Acorn Computers Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Makefile for Territory modules
+#
+
+COMPONENT  ?= UK
+ROM_SOURCE  = Territory.s
+ASFLAGS     = -PD "Territory SETS \"${TARGET}\""
+CUSTOMRES   = custom
+
+include StdTools
+include AAsmModule
+
+# Definitions of rules for top-level phony targets are required until
+# AAsmModule is updated. After this point, the definitions in AAsmModule
+# will take precedence because they are encountered first: amu will emit a
+# warning about the definitions below, but that can safely be ignored.
+resources: resources_${CUSTOMRES}
+	@${NOP}
+
+${MERGEDMSGS}::
+	${MKDIR} ${MERGEDRDIR}${SEP}${TARGET}
+	${FAPPEND} $@ Resources${SEP}${TARGET}${SEP}Territory Resources${SEP}${LOCALE}${SEP}Messages
+
+resources_custom: ${MERGEDMSGS}
+	${MKDIR} ${RESFSDIR}
+	${CP} ${MERGEDMSGS} ${RESFSDIR}${SEP}Messages ${CPFLAGS}
+	@${ECHO} ${COMPONENT}: resources copied to Messages module
+
+# Dynamic dependencies:
+o.CortexA7.UK: s.Territory
+o.CortexA7.UK: Hdr:ListOpts
+o.CortexA7.UK: Hdr:Macros
+o.CortexA7.UK: Hdr:System
+o.CortexA7.UK: Hdr:SWIs
+o.CortexA7.UK: Hdr:CPU.Arch
+o.CortexA7.UK: Hdr:Machine.<Machine>
+o.CortexA7.UK: Hdr:Machine.Machine
+o.CortexA7.UK: Hdr:CPU.Generic26
+o.CortexA7.UK: Hdr:CPU.Generic32
+o.CortexA7.UK: Hdr:IO.GenericIO
+o.CortexA7.UK: Hdr:RISCOS
+o.CortexA7.UK: Hdr:Machine.<Machine>
+o.CortexA7.UK: Hdr:Machine.Machine
+o.CortexA7.UK: Hdr:ModHand
+o.CortexA7.UK: Hdr:Services
+o.CortexA7.UK: Hdr:FSNumbers
+o.CortexA7.UK: Hdr:NewErrors
+o.CortexA7.UK: Hdr:Variables
+o.CortexA7.UK: Hdr:Countries
+o.CortexA7.UK: Hdr:Proc
+o.CortexA7.UK: Hdr:OsBytes
+o.CortexA7.UK: Hdr:MsgTrans
+o.CortexA7.UK: Hdr:Territory
+o.CortexA7.UK: Hdr:ResourceFS
+o.CortexA7.UK: Hdr:CMOS
+o.CortexA7.UK: Hdr:NdrDebug
+o.CortexA7.UK: VersionASM
+o.CortexA7.UK: s.UK
+o.CortexA7.UK: s.ModHead
+o.CortexA7.UK: s.Entries
+o.CortexA7.UK: s.Tables
+o.CortexA7.UK: s.DateTime
+o.CortexA7.UK: s.Transform
+o.CortexA7.UK: s.Tail

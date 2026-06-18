@@ -1,0 +1,279 @@
+TaskID:Alarm
+_Version:2.96 (14-Aug-21)
+
+Unexp:An unexpected error has occured: %0 (%1). Do you wish to quit?
+Fatal:A fatal error has occured: %0 (%1)
+ErrBut:Quit
+
+BNF:Corrupt %0 block not freed
+BNE:Corrupt %0 block not extended
+ODD1:Block %0: %1
+
+Time01:%Z12:%MI %AM
+Time02:%W3, %ZDY%ST
+Time03:%MO
+Time04:%CE%YR
+Time10:%Z24
+Time11:%MI
+Time12:%ZDY
+Time13:%Z12 %AM 
+Time14:%W3
+
+FN1:Selection
+FN2:Alarms
+
+TitlA1:Set alarm
+TitlA3:Change alarm
+
+ActvA1:An alarm was set for %Z12:%MI %AM,
+ActvA2:It will repeat at %Z12:%MI %AM,
+ActvA3:URGENT!
+ActvA4:Attention!
+ActvA5:Application alarm set by
+ActvA6:%we, %zdy%st %mo %ce%yr.
+
+PrntA1:This is an application alarm set by %0.
+PrntA2:This is a task alarm. Command is:
+PrntA3:This alarm is urgent.
+PrntA4:Alarm is set to repeat every %0 %1 within a working week.
+PrntA5:Alarm is set to repeat every %0 %1.
+PrntA6:%Z12:%MI %AM
+PrntA7:%WE, %ZDY%ST %MO %CE%YR
+PrntB1:minutes
+PrntB2:hours
+PrntB3:days
+PrntB4:weeks
+PrntB5:months
+PrntB6:years
+PrntB7:<No alarm text>
+PrntB8:Alarm operates within a working week.
+PrntB9:Alarm is set to repeat on the %0 %1 of every %2 month.
+
+BrwsA1:Task alarm: %0
+BrwsA5:Application alarm set by %0
+BrwsA2:%w3,%0
+BrwsA3:%zdy%st %m3 %ce%yr%0
+BrwsA4:%z12:%mi %am%0
+BrwsM1:#Alarms,Set new alarm,%0,Select all,Clear selection,Save as text@,Save as alarms@
+BrwsM2:#%0,Change %1,Delete %1,Copy %1,Save as text@,Save as alarms@
+BrwsM3:Selection
+BrwsM4:selection
+BrwsM5:Alarm
+BrwsM6:alarm
+BrwsT3:delete the selected alarm?
+BrwsT4:delete the selected alarms?
+
+AlarmH2:\TAlarm\Ú|M\Sset an\Ò
+AlarmH3:\V\w \2set an\Ò
+AlarmH5:\V\w \2\N an\Ò
+AlarmH8:\W\P\¥an \e\≠ has gone off.
+AlarmH9:\V\w \Ps\X Alarm.
+AlarmHA:\Wthe \e browser. It \2manipulat\y\es.|M\1\s on an \e\E\N it.
+AlarmHB:\V\w \2\tsetup\˘!Alarm.
+
+BHlpA1:\Sset\fnew\Ò
+BHlpA2:\Ract upo\«\m\Ò
+BHlpA3:\Ract upo\«\m \es.
+BHlpA4:\S\B \©\@\es.
+BHlpA5:\Sde\B \©\@\es.
+BHlpA6:\Robtain\f\Z list\¥\©\@set \es.
+BHlpA7:\Ssav\y\es\Ç\Ô \Z.|M\Rsav\y\es elsew\È.
+BHlpB1:\S\t\m\Ò
+BHlpB2:\S\tfirst \m\Ò
+BHlpB3:\S\\y\m\Ò
+BHlpB4:\S\\y\m \es.
+BHlpB5:\Robtain\f\‚ \Z list\q\@\m\Ò
+BHlpB6:\Robtain\f\‚ \Z list\q\@\m \es.
+BHlpB7:\Robtain\f!Alarm \Z\¡tain\q\@\m\Ò
+BHlpB8:\Robtain\f!Alarm \Z\¡tain\q\@\m \es.
+BHlpB9:\S\⁄\m\Ò
+BHlpBA:\S\⁄\m \es.
+
+SHlp0A:\S\Áe non-urg\5 \es quiet.
+SHlp0B:\S\Áe non-urg\5 \es beep.
+SHlp1A:\S\Áe \es fit\‡\fwork\¥week.
+SHlp1B:\S\Áe \es fit\‡\@whole week.
+SHlp2A:\Shav\y\e database updat\áautomatic\©y.
+SHlp2B:\Sstop updat\q\@\e database automatic\©y.
+SHlp3A:C\ˇ\s if\˝t\¡firma\M w\ø\\¥\es.
+SHlp3B:C\ˇ\s if\âdo not want\¡firma\M w\ø\\¥\es.
+SHlp4A:\Shave an analogue \P\k\fsecond hand.
+SHlp5A:\Shave an analogue \P\kout\fsecond hand.
+SHlp6A:\Shave\fdigital \P\ÅHH:MM.
+SHlp7A:\Shave\fdigital \P\ÅHH:MM:SS.
+SHlp8A:\Shave\fdigital \P\Y\ñt shown\íright\Y\äer.
+SHlpAA:\T\e beep timeout.
+SHlpBA:\Tus\…defin\á\P \ñt.
+SHlpBB:An example\Åhow\@\P would look is:
+SHlpGA:C\ˇ\s\˘\es\Ebeep\¡tinuously.
+SHlpGB:C\ˇ\s\˘\es\Estop beep\¥aft\¶\_seconds specified.
+SHlpHA:\Sremove\Fday\Ûwork\¥week.
+SHlpHB:\Sadd\Fday\íwork\¥week.
+SHlpIA:\Ssave\Qus\ychosen\˙\Qclos\y\w.|M\Ado\Fbut leav\y\w \å.
+SHlpIB:\Sclos\y\w,\kout chang\¥Alarm's\¡figura\M.
+
+HelpA3:\T\9hour\z
+HelpA4:\T\9minute\z
+HelpA5:\T\912 hour time\z
+HelpA6:\S\Á\y\e urg\5.
+HelpA7:\S\Á\y\e non-urg\5.
+HelpA9:\T\9date\z
+HelpB4:\T\9month\z
+HelpB5:\T\9day\Yweek\z
+HelpB7:\T\9year\z
+HelpB8:\Spositio\«caret.|MUs\ycurs\jkeys\Emov\ycaret.
+HelpB9:\Spositio\«caret.|MUs\ycurs\jkeys\Emov\ycaret\º\6\Eset the\Ò
+HelpC1:\S\Áe\Fa recurr\q\Ò
+HelpC2:\S\Áe\Fa non-recurr\q\Ò
+HelpC3:\S\îminutes.
+HelpC4:\S\îhours.
+HelpC5:\S\îdays.
+HelpC6:\Sse\ãrecurrenc\gterval\Eweeks.
+HelpC7:\S\îmonths.
+HelpC8:\S\îyears.
+HelpC9:\Sde\≤recurrence time.
+HelpD1:\T\9recurrence time.
+HelpD2:\Sin\≤repeat time.
+HelpE1:\S\Áe\Fa task\Ò
+HelpE2:\S\Áe\Fa standard\Ò
+HelpE3:\S\Áe \es fit\‡\fwork\¥week.
+HelpE4:\S\Áe \es fit\‡\ffull week.
+HelpE5:C\ˇMENU\Efind another\Ò
+HelpE6:\S\Áe\Fa regular recurr\q\Ò
+HelpF1:\S\toffset\‡\@month required.
+HelpF2:\S\tday required.
+HelpF3:\S\t\_months that should pass between \es.
+HelpF4:\T\9offset\‡\@month.
+HelpF5:\T\9day\†\e\Erepeat on.
+HelpF6:\T\9\_months that should pass between \es.
+HelpF7:\S\Áe\Fa standard recurr\q\Ò
+
+HelpG1:Year difference.
+HelpG2:Day difference.
+HelpG3:Hour difference.
+HelpG4:Minute difference.
+
+HelpD3:\Sse\ã\e\ívalues\âhave chosen.
+HelpD7:\Supdat\y\e\˙.
+HelpIB:\Sclos\y\w\kout sett\¥an\Ò
+HelpIC:\Sclos\y\w\kout chang\¥the\Ò
+
+ClockA7:\Sin\≤hours.
+ClockA8:\Sde\≤hours.
+ClockA9:\Sin\≤minutes.
+ClockB1:\Sde\≤minutes.
+ClockB2:\Sde\≤date.
+ClockB3:\Sin\≤date.
+ClockB4:\Sde\≤month.
+ClockB5:\Sin\≤month.
+ClockB6:\Sde\≤year.
+ClockB7:\Sin\≤year.
+
+MnuAL1:\Saccep\ã\K\Ò
+MnuAL2:\Scancel\@\K\Ò
+MnuAL3:\Rdef\¶\K\Ò
+MnuAM6:\Gyou are \Kly sett\¥an\Ò
+MnuAM8:\Gyou are \Kly chang\¥an\Ò
+MnuAM9:\Gt\È aren't any \es set.
+MnuAMA:\Gyou haven't \m any \es.
+MnuD11:Ent\…a def\…value\Q\6.
+MnuD21:\R\÷minutes.
+MnuD22:\R\÷hours.
+MnuD23:\R\÷days.
+MnuD24:\R\÷weeks.
+MnuD25:\R\÷months.
+MnuD26:\R\÷years.
+MnuFI1:\Sgo\íprevious\Ò
+MnuFI2:\Sgo\ínext\Ò
+MnuFI3:\S\ı\˘an\Ò
+MnuFI4:\Gyou aren't unsett\q\ºchang\¥an\Ò
+MnuFI5:\Gyou are \Kly sett\q\@clock.
+MnuMM1:\Rsee\X Alarm.
+MnuMM3:\S\P\@\e browser.
+MnuMM4:\S\N Alarm's\¡figura\M.
+MnuMM5:\Sse\ãcomputer's clock.
+MnuMM6:\Squit Alarm.
+MnuMM7:\Gyou are \Kly find\¥an\Ò
+
+MenuAL:#Alarm,Accept alarm,Cancel alarm,Defer alarm
+MenuD1:#How many?,$
+MenuD2:#Defer alarm,Minutes,Hours,Days,Weeks,Months,Years
+MenuFI:#Alarm,Previous alarm,Next alarm
+MenuMM:#Alarm,Info,Alarms...,Choices...,Set clock...,Quit
+
+Drg01:This box allows you to save data in a file, or transfer it to another application.
+Drg02:Click here to save the data with the current filename. If it is not a full pathname, you must drag the icon to a directory first.
+Drg03:This shows the filename for this data. If it is not a full pathname, drag the icon into a directory display.
+Drg04:Drag this icon to the directory in which you want to save the file, or drag it to the program into which you want to transfer the data.
+
+OkayA1:Please install %0, as an application alarm is waiting for it
+OkayA2:You are already changing an alarm
+OkayA3:'%0' is not a recognised alarm data file. Have you converted it?
+OkayA4:You cannot change an alarm while you are setting one
+OkayA8:%0 - HH:MM format selected
+OkayB6:You are already setting an alarm
+OkayB8:You cannot set an alarm while you are changing one
+OkayB9:Alarm is already running
+OkayC1:To save, drag the icon to a directory display
+OkayC3:This alarm will not repeat as it would go beyond the year 2247
+OkayC4:Deferring the alarm by that amount would take it beyond the year 2247, which is not allowed
+OkayC5:An application alarm has just been deleted as it repeated beyond the year 2247
+OkayC6:The task alarm which just went off has been deleted as it repeated beyond the year 2247
+OkayC7:This alarm will not repeat as it
+OkayC8:would go beyond the year 2247
+OkayC9:You must have at least one day in a working week
+OkayD1:Cannot find Alarm's Code file
+OkayD2:There is not enough memory available to perform this operation. You need to make %0K more memory available. Quit any unwanted applications or see the RISC OS User Guide for ways to maximise memory.
+OkayD3:There is not enough memory available to perform this operation. Quit any unwanted applications or see the RISC OS User Guide for ways to maximise memory.
+
+Fatal2:Menu area full
+Fatal3:No more workspace
+Fatal4:Alarm !Run file is out of date. Either run !Alarm from Apps or re-copy it onto your disc
+Fatal5:Template '%0' not found
+
+Warn:Warning from Alarm
+File01:unable to close alarm file
+File02:Unable to create alarm file: %0
+File03:Unable to save alarm database: %0
+File04:alarm file does not have read and/or write access
+File05:The alarms cannot be automatically saved because you have not yet set the filename
+File06:Error while saving alarm database: %0
+File07:Unable to load file '%0' because it does not have read access
+
+ApplA1:Bad application alarm option
+ApplA2:Application name too big
+ApplA3:Application alarm identifier too big
+ApplA4:Unable to locate specified application alarm
+
+FrmtA1:%0 is an unknown % entry in user format
+FrmtA2:Clock display produced from user format too large
+FrmtA3:No clock display produced from user format
+FrmtA4:User format contains an unknown % specifier
+
+SR0w1/SR0w2/SR0w3/SR0w4/SR0w5/SR0w6/SR0w7:first
+SR1w1/SR1w2/SR1w3/SR1w4/SR1w5/SR1w6/SR1w7:second
+SR2w1/SR2w2/SR2w3/SR2w4/SR2w5/SR2w6/SR2w7:third
+SR3w1/SR3w2/SR3w3/SR3w4/SR3w5/SR3w6/SR3w7:last
+SR4w1/SR4w2/SR4w3/SR4w4/SR4w5/SR4w6/SR4w7:penultimate
+SR5w1/SR5w2/SR5w3/SR5w4/SR5w5/SR5w6/SR5w7:third to last
+
+WE1a0/WE1a1/WE1a2/WE1a3/WE1a4/WE1a5:Sunday
+WE2a0/WE2a1/WE2a2/WE2a3/WE2a4/WE2a5:Monday
+WE3a0/WE3a1/WE3a2/WE3a3/WE3a4/WE3a5:Tuesday
+WE4a0/WE4a1/WE4a2/WE4a3/WE4a4/WE4a5:Wednesday
+WE5a0/WE5a1/WE5a2/WE5a3/WE5a4/WE5a5:Thursday
+WE6a0/WE6a1/WE6a2/WE6a3/WE6a4/WE6a5:Friday
+WE7a0/WE7a1/WE7a2/WE7a3/WE7a4/WE7a5:Saturday
+
+MR1:first
+MR2:second
+MR3:third
+MR4:fourth
+MR5:fifth
+MR6:sixth
+MR7:seventh
+MR8:eighth
+MR9:ninth
+MR10:tenth
+MR11:eleventh
+MR12:twelfth

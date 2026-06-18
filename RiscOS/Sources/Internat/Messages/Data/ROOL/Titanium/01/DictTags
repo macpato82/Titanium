@@ -1,0 +1,200 @@
+Processed.ROOL.Titanium.01.Common.Resources.ADFS.Messages: Disc, ExtEscape, BadDrive, HADFADF:ADFS, SADFADF:ADFS, HADFDIR:ADFSDirCache, SADFDIR:ADFSDirCache
+
+Processed.ROOL.Titanium.01.Common.Resources.ADFSFiler.Messages: DLSpace, DNShort, DifDisc, UnkIcon, TooShrt, UsrData, BkpDfct, HAFLDSK:Desktop_ADFSFiler, SAFLDSK:Desktop_ADFSFiler
+
+Processed.ROOL.Titanium.01.Common.Resources.BASIC.Messages: M0, M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11, M12, M13, M14, M15, M16, M17, M18, M19, M20, M21, M22, M23, M24, M25, M26, M27, M28, E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14, E15, E16, E17, E18, E19, E20, E21, E22, E23, E24, E25, E26, E27, E28, E29, E30, E31, E32, E33, E34, E35, E36, E37, E38, E39, E40, E41, E42, E43, E44, E45, E46, E47, E48, E49, E50, E51, E52, E53, E54, E55, E56, E57, E58, E59, E60, E61, E62, E63, E64, E65, E66, E67, E68, E69, E70, E71, E72, E73, E74, E75, E76, E77, E78, E79, E80, E81, E82, E83, E84, E85, E86, E87, E88, E89, E90, E91, E92, E93, E94, E95, E96, E97, E98, E99, E100, E101, E102, E103, E104, E105, E106, E107, E108, E109, E110, E111, E112, E113, E114, E115, E116, E117, E118, E119, E120, E121, E122, E123, E124, HAND, HABS, HACS, HADVAL, HASC, HASN, HATN, HAUTO, HAPPEND, HBGET, HBPUT, HBEATS, HBEAT, HCOLOUR, HCONST, HCALL, HCASE, HCHAIN, HCHR$, HCLEAR, HCLOSE, HCLG, HCLS, HCOS, HCOUNT, HCIRCLE, HCRUNCH, HDATA, HDEG, HDEF, HDELETE, HDIV, HDIM, HDRAW, HENDPROC, HEDIT, HENDWHILE, HENDCASE, HENDIF, HEND, HENVELOPE, HELSE, HEVAL, HERL, HERROR, HEOF, HEOR, HERR, HEXP, HEXT, HELLIPSE, HFOR, HFALSE, HFILL, HFN, HGOTO, HGET$, HGET, HGOSUB, HGCOL, HHIMEM, HHELP, HHELPNO, HINPUT, HIF, HINKEY$, HINKEY, HINT, HINSTR, HINSTALL, HLIST, HLINE, HLOAD, HLOMEM, HLOCAL, HLEFT$, HLEN, HLET, HLOG, HLN, HLIBRARY, HLVAR, HMID$, HMODE, HMOD, HMOVE, HMOUSE, HNEXT, HNEW, HNOT, HOLD, HON, HOFF, HOF, HORIGIN, HOR, HOPENIN, HOPENOUT, HOPENUP, HOSCLI, HOTHERWISE, HOVERLAY, HPRINT, HPAGE, HPTR, HPI, HPLOT, HPOINT, HPOINTPAR, HPROC, HPOS, HQUIT, HRETURN, HREPEAT, HREPORT, HREAD, HREM, HRUN, HRAD, HRESTORE, HRIGHT$, HRND, HRECTANGLE, HRENUMBER, HSTEP, HSAVE, HSGN, HSIN, HSQR, HSOUND, HSPC, HSTR$, HSTRING$, HSTOP, HSTEREO, HSUM, HSWAP, HSYS, HTAN, HTAB, HTEMPO, HTEXTLOAD, HTEXTSAVE, HTHEN, HTIME, HTINT, HTO, HTRACE, HTRUE, HUNTIL, HUSR, HVDU, HVAL, HVPOS, HVOICES, HVOICE, HWHILE, HWHEN, HWAIT, HWIDTH, HASM, HASFP, HASFN, H0, H1, H@, HBASBAS:BASIC, SBASBAS:BASIC, HBASB64:BASIC64, SBASB64:BASIC64
+
+Processed.ROOL.Titanium.01.Common.Resources.Buffers.Messages: E01, E02, E03, E04, E05, E06, E07
+
+Processed.ROOL.Titanium.01.Common.Resources.CLib.Messages: C01, C02, C04, C05, C06, C07, C08, C48, C49, C50, C51, C53, C54, C55, C57, C58, C60, C61, C62, C63, C64, C65, C66, C71, C72, C74, C75, C76
+
+Processed.ROOL.Titanium.01.Common.Resources.Colours.Messages: BadMODE, CantKill, CTBadCalib, CTConvOver, CTBadHSV, CTSwitched, CTBadMiscOp, CTBadFlags, CTBuffOver, CTBadDepth, HCLTINT
+
+Processed.ROOL.Titanium.01.Common.Resources.Debugger.Messages: HDBGBCL:BreakClr, SDBGBCL, HDBGBLS:BreakList, SDBGBLS:BreakList, HDBGBST:BreakSet, SDBGBST, HDBGCNT:Continue, SDBGCNT:Continue, HDBGDBG:Debug, SDBGDBG:Debug, HDBGINS:InitStore, SDBGINS, HDBGMEM:Memory, SDBGMEM, HDBGMMA:MemoryA, SDBGMMA, HDBGMMI:MemoryI, SDBGMMI, HDBGSHR:ShowRegs, SDBGSHR:ShowRegs, HDBGSFR:ShowFPRegs, SDBGSFR:ShowFPRegs, HDBGSVR:ShowVFPRegs, SDBGSVR, HDBGWHR:Where, SDBGWHR
+
+Processed.ROOL.Titanium.01.Common.Resources.Desktop.Messages: HDSKDSK:Desktop, SDSKDSK:Desktop
+
+Processed.ROOL.Titanium.01.Common.Resources.DeviceFS.Messages: E02, E03, E04, E05, E06, E07, E08, E09, E0B, E0C, E0D, E0E, E0F
+
+Processed.ROOL.Titanium.01.Common.Resources.Display.Messages: E00, E01, E02, E03, E04, E05, HDPMDSK:Desktop_DisplayManager, SDPMDSK:Desktop_DisplayManager
+
+Processed.ROOL.Titanium.01.Common.Resources.DMA.Messages: E00, E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, E11, E12, E13, E14, E15, E16, E17, E18, E19, E20, E21, I00, I01, I02, I03, HDMADCH:DMAChannels, SDMADCH:DMAChannels
+
+Processed.ROOL.Titanium.01.Common.Resources.Draw.Messages: DrawHelp, DrawSyntax, _Version
+
+Processed.ROOL.Titanium.01.Common.Resources.DrawMod.Messages: M00, M01, M02, M03, M04, M05, M06, M07, M08, M09, M10, M11, M12
+
+Processed.ROOL.Titanium.01.Common.Resources.FileCore.Messages: BC0, BC1, BC2, CMC0, CMC1, CMC2, CMC3, DC0, DC1, AreYouSure, FC0, FC1, FCK0, FCK1, MC0, MC1, MC2, MC3, MC4, MC5, MC6, VC0, VC1, VC2, VC3, disc, Defect, TooManyDefects, CantDelCsd, CantDelLib, CompactReq, MapFull, BadDisc, TooManyDiscs, BadUp, AmbigDisc, NotRefDisc, InUse, BadParms, CantDelUrd, Buffer, Workspace, MultipleClose, BrokenDir, BadFsMap, OneBadFsMap, BadDefectList, BadDrive, Size, DestDefects, BadRename, DirFull, DirNotEmpty, Access, TooManyOpen, Open, Locked, Exists, Types, DiscFull, WriteProt, DataLost, BadName, BadAtt, DriveEmpty, DiscNotFound, DiscNotPresent, NotFound, DiscNotFileCore, NotToAnImageYouDont, Channel, WildCards, BadCom, FileCoreError, Disc, FSLocked, FileTooBig, DirBuffer, MapArea, RetryBoot, HFLCBKU:Backup, SFLCBKU:Backup, HFLCBYE:Bye, SFLCBYE:Bye, HFLCCKM:CheckMap, SFLCCKM:CheckMap, HFLCCOM:Compact, SFLCCOM:Compact, HFLCDEF:Defect, SFLCDEF:Defect, HFLCDIS:Dismount, SFLCDIS:Dismount, HFLCDRV:Drive, SFLCDRV:Drive, HFLCFRE:Free, SFLCFRE:Free, HFLCMAP:Map, SFLCMAP:Map, HFLCMNT:Mount, SFLCMNT:Mount, HFLCNDS:NameDisc, SFLCNDS:NameDisc, HFLCVER:Verify, SFLCVER:Verify
+
+Processed.ROOL.Titanium.01.Common.Resources.Filer.Messages: NoRecur, NoTempl, BadSave, BadPath, RError, SFLROPD, SFLRCLD, SFLRRUN, SFLRBOO, SFLRTRU, SFLROPT, SFLRLAY, SFLRDCH, SFLRVIS, SFLRDFL, HFLROPD:Filer_OpenDir, HFLRCLD:Filer_CloseDir, HFLRRUN:Filer_Run, HFLRBOO:Filer_Boot, HFLRTRU:Filer_Truncation, HFLROPT:Filer_Options, HFLRLAY:Filer_Layout, HFLRDCH:Filer_DClickHold, HFLRVIS:Filer_Visibility, HFLRDFL:Desktop_Filer
+
+Processed.ROOL.Titanium.01.Common.Resources.FileSwitch.Messages: CFS0, CT0, CT1, CT2, CC0, CC1, CC2/CC24/CC26, CC3/CC25/CC27, CC5, CC6, CC7, CC8, CC9, CC10, CC11, CC12, CC13, CC14, CC15, CC16, CC17, CC18, CC19, CC20, CC21, CC22, CC23, CC28, CW0, CW1, CW2, CW3, CW4/CW9/CW10, CW5, CW6, CW8, Cc0, Cc1, Cc2, Cc3, Cc4/Cc6/Cc7, Cc5, BadDisc, Wild, BadFileName, NulName, CantOpen, UkFS, UkFSP, UkRun, UkLoad, PathPath, FOnDir, DirOnF, DestThere, CantLib, CpFOnDir, CpDirOnF, NoSelFS, NoRead, NoUpdate, UsFSE, UaFSE, NoStack, OffFile, BadComm, BadOSFile, BadOSArgs, BadOSGBPB, BadFindMode, BadControl, BadBuf, BadFSName, UkMultiFS, CantNumberFS, EOF, FSNotSpecial, TransNoMem, ExTooLow, ExNotInCode, HeSayNo, BadCopy, CopyNowt, WipeNowt, TooBig, BadType, BadName1, NoMem1, NoStack1, PPPath, FSGAEr, FSFAEr, FSGREr, Busy, BadComOpt, BadErr, BadAtts, BadDscNm, BadSetDr, PNotEmpty, PBusy, HFLSACC:Access, SFLSACC:Access, HFLSCAT:Cat, SFLSCAT:Cat, HFLSCDR:CDir, SFLSCDR:CDir, HFLSCPY:Copy, SFLSCPY:Copy, HFLSCNT:Count, SFLSCNT:Count, HFLSDIR:Dir, SFLSDIR:Dir, HFLSEDR:EnumDir, SFLSEDR:EnumDir, HFLSEX:Ex, SFLSEX:Ex, HFLSFIN:FileInfo, SFLSFIN:FileInfo, HFLSINF:Info, SFLSINF:Info, HFLSLCT:LCat, SFLSLCT:LCat, HFLSLEX:LEx, SFLSLEX:LEx, HFLSLIB:Lib, SFLSLIB:Lib, HFLSREN:Rename, SFLSREN:Rename, HFLSRUN:Run, SFLSRUN:Run, HFLSSTY:SetType, SFLSSTY:SetType, HFLSSHT:Shut, SFLSSHT:Shut, HFLSSHD:ShutDown, SFLSSHD:ShutDown, HFLSSTM:Stamp, SFLSSTM:Stamp, HFLSUP:Up, SFLSUP:Up, HFLSWIP:Wipe, SFLSWIP:Wipe, HFLSBCK:Back, SFLSBCK:Back, HFLSURD:URD, SFLSURD:URD, HFLSNDR:NoDir, SFLSNDR:NoDir, HFLSNUR:NoURD, SFLSNUR:NoURD, HFLSNLB:NoLib, SFLSNLB:NoLib, HFLSCFS:FileSystem, SFLSCFS:FileSystem, HFLSCTR:Truncate, SFLSCTR:Truncate
+
+Processed.ROOL.Titanium.01.Common.Resources.Fonts.Messages: ErrCantKill, ErrBadFileName, ErrNoRoom, ErrCacheFull, ErrNoCache, Err64K, ErrPalTooBig, ErrBadTranBits, ErrNotEnoughBits, ErrNoFont, ErrNoPixels, ErrBadFontNumber, ErrNotFound, ErrBadFontFile, ErrNoHandles, ErrBadCounter, ErrBadCtrlChar, ErrsInUse, ErrBadSegment, ErrBadPrefix, ErrReserved, ErrBadCharCode, ErrNoBitmaps, ErrNoBitmaps2, ErrBadFontCacheFile, ErrFieldNotFound, ErrBadMatrix, ErrDivby0, ErrBadReadMetrics, ErrBadRGB, ErrEncodingNotFound, ErrMustHaveSlash, ErrBadEncodingSize, ErrTooManyIDs, ErrTooFewIDs, ErrNoBaseEncoding, ErrIdentifierNotFound, ErrTooManyChunks, ErrBadFontFile2, ErrBadSupremacyBlend, ErrNoPathDot, ErrDataNotFound, ErrDataNotFound2, HFNMLST:FontList, SFNMLST:FontList, HFNMCAT:FontCat, SFNMCAT:FontCat, HFNMMX1:FontMax1, SFNMMX1:FontMax1, HFNMMX2:FontMax2, SFNMMX2:FontMax2, HFNMMX3:FontMax3, SFNMMX3:FontMax3, HFNMMX4:FontMax4, SFNMMX4:FontMax4, HFNMMX5:FontMax5, SFNMMX5:FontMax5, HFNMMAX:FontMax, SFNMMAX:FontMax, HFNMLDF:LoadFontCache, SFNMLDF:LoadFontCache, HFNMSVF:SaveFontCache, SFNMSVF:SaveFontCache, HFNMINS:FontInstall, SFNMINS:FontInstall, HFNMLIB:FontLibrary, SFNMLIB:FontLibrary, HFNMREM:FontRemove, SFNMREM:FontRemove
+
+Processed.ROOL.Titanium.01.Common.Resources.FPEmulator.Messages: DivZero, Inexact, InvalOp, OFlow, UFlow, BadFPC, NoHW
+
+Processed.ROOL.Titanium.01.Common.Resources.Free.Messages: FSP, UnkFS, NotRun, NotLogd, HFREDFR:Desktop_Free, SFREDFR:Desktop_Free, HFRESHF:ShowFree, SFRESHF:ShowFree
+
+Processed.ROOL.Titanium.01.Common.Resources.FSLock.Messages: ERR1, ERR2, ERR3, ERR5, ERR6, ERR7, ERR8, ERR9, ERR10, ERR11, ERR12, Stat0, Stat1, Stat2, Sulk, HFSLLOC:FSLock_Lock, SFSLLOC:FSLock_Lock, HFSLUNL:FSLock_Unlock, SFSLUNL:FSLock_Unlock, HFSLSTA:FSLock_Status, SFSLSTA:FSLock_Status, HFSLCHP:FSLock_ChangePassword, SFSLCHP:FSLock_ChangePassword
+
+Processed.ROOL.Titanium.01.Common.Resources.Hourglass.Messages: HHON:HOn, SHON:HOn, HHOFF:HOff, SHOFF:HOff
+
+Processed.ROOL.Titanium.01.Common.Resources.IIC.Messages: D2?, D6?, D7?, DC?, DA?, DD0, D??, HIICD:IICDevices, SIICD:IICDevices
+
+Processed.ROOL.Titanium.01.Common.Resources.Internatio.Messages: HINTALP:Alphabet, SINTALP:Alphabet, HINTCTY:Country, SINTCTY:Country, HINTKBD:Keyboard, SINTKBD:Keyboard, HINTCCT:Country, SINTCCT:Country, HINTALS:Alphabets, SINTALS:Alphabets, HINTCTS:Countries, SINTCTS:Countries
+
+Processed.ROOL.Titanium.01.Common.Resources.Kernel.Messages: HUTMCON, HUTMMOD, HUTMCOM, HUTMFSC, HUTMMD, HUTMCM, HUTMFS, HUTMCK, HUTMHK, HUTMBRK:Break, HUTMCDA:ChangeDynamicArea, SUTMCDA:ChangeDynamicArea, HUTMECH:Echo, HUTMERR:Error, SUTMERR:Error, HUTMEVL:Eval, SUTMEVL:Eval, HUTMGOS:GOS, SUTMGOS:GOS, HUTMIF:IF, SUTMIF:IF, HUTMIGN:Ignore, SUTMIGN:Ignore, SUTMMOD:Modules, HUTMPOW:PowerOn, HUTMRES:Reset, HUTMRMC:RMClear, SUTMRMC:RMClear, HUTMRME:RMEnsure, SUTMRME:RMEnsure, HUTMRMF:RMFaster, SUTMRMF:RMFaster, HUTMRMI:RMInsert, SUTMRMI:RMInsert, HUTMRMK:RMKill, SUTMRMK:RMKill, HUTMRML:RMLoad, SUTMRML:RMLoad, HUTMRMR:RMReInit, SUTMRMR:RMReInit, HUTMRRN:RMRun, SUTMRRN:RMRun, HUTMRMT:RMTidy, SUTMRMT:RMTidy, HUTMROM:ROMModules, SUTMROM:ROMModules, HUTMSET:Set, SUTMSET:Set, HUTMSTE:SetEval, SUTMSTE:SetEval, HUTMSTM:SetMacro, SUTMSTM:SetMacro, HUTMSHO:Show, SUTMSHO:Show, HUTMSTA:Status, SUTMSTA:Status, HUTMSYN:Syntax, HUTMTIM:Time, SUTMTIM:Time, HUTMUNP:Unplug, SUTMUNP:Unplug, HUTMUNS:Unset, SUTMUNS:Unset, HUTMAPP:Append, SUTMAPP:Append, HUTMBUI:Build, SUTMBUI:Build, HUTMCAC:Cache, SUTMCAC:Cache, HUTMCLO:Close, SUTMCLO:Close, HUTMCRE:Create, SUTMCRE:Create, HUTMDEL:Delete, SUTMDEL:Delete, HUTMDMP:Dump, SUTMDMP:Dump, HUTMEXE:Exec, SUTMEXE:Exec, HUTMFX:FX, SUTMFX:FX, HUTMGO:GO, HUTMHLP:Help, HUTMKEY:Key, SUTMKEY:Key, HUTMLST:List, SUTMLST:List, HUTMLOD:Load, SUTMLOD:Load, HUTMOPT:Opt, SUTMOPT:Opt, HUTMPRI:Print, SUTMPRI:Print, HUTMQUI:Quit, SUTMQUI:Quit, HUTMREM:Remove, SUTMREM:Remove, HUTMSAV:Save, SUTMSAV:Save, HUTMSHA:Shadow, SUTMSHA:Shadow, HUTMSPL:Spool, SUTMSPL:Spool, HUTMSPO:SpoolOn, SUTMSPO:SpoolOn, HUTMTV:TV, SUTMTV:TV, HUTMTYP:Type, SUTMTYP:Type
+
+Processed.ROOL.Titanium.01.Common.Resources.MsgTrans.Messages: TokNFnd, Syntax, FilOpen, BadDesc
+
+Processed.ROOL.Titanium.01.Common.Resources.Paint.Messages: PaintHelp, PaintSyntax, _Version
+
+Processed.ROOL.Titanium.01.Common.Resources.PCI.Messages: BadAccessSize, UnknownAreaHandler, NoSuchAddr, NoSuchPCI, BadRead, ECNoNet, NDallas, NoPCIBus, DAName, InfDesc, InfDNVe, InfLoc1, InfLoc2, InfClas, InfVend, InfDevi, InfRevi, InfSubV, InfSubs, InfCmdR, InfStaR, InfSt2R, InfBrCR, InfLate, InfMGnt, InfMLat, InfCach, InfIntP, InfIntL, InfAddr, InfAddW, InfCaps, Inf____, InfAMem, InfAIO, InfAROM, InfAPre, PCIDevs, InfCmd0, InfCmd1, InfCmd2, InfCmd3, InfCmd4, InfCmd5, InfCmd6/InfBrC0, InfCmd7, InfCmd8, InfCmd9/InfBrC7, InfSt?3, InfSt?4, InfSt?5, InfSt?7, InfSt?8, InfSDS0, InfSDS1, InfSDS2, InfSDS?, InfSt?11, InfSt?12, InfSt?13, InfSta14, InfSt214, InfSt?15, InfBrC1, InfBrC2, InfBrC3, InfBrC5, InfBrC6, InfBrC8, InfBrC9, InfBrC10, InfBrC11, InfSt??/InfSt???/InfCmd??/InfBrC?/InfBrC??, InfCap01, InfCap02, InfCap03, InfCap04, InfCap05, InfCap06, InfCap07, InfCap08, InfCap09, InfCap0A, InfCap0B, InfCap0C, InfCap0D, InfCap0E, InfCap0F, InfCap10, InfCap11, InfCap??, C000000, C000100, C010000, C0101??, C010200, C010300, C010400, C0105??, C0106??, C0107??, C0108??, C0109??, C01????, C020000, C020100, C020200, C020300, C020400, C020500, C020600, C020700, C02????, C030000, C030001, C030100, C030200, C03????, C040000, C040100, C040200, C040300, C04????, C050000, C050100, C05????, C060000, C060100, C060200, C060300, C060400, C060401, C060500, C060600, C060700, C0608??, C0609??, C060A00, C060B00, C06????, C070000, C070001, C070002, C070003, C070004, C070005, C070006, C070100, C070101, C070102, C070103, C0701FE, C070200, C070300, C070301, C070302, C070303, C070304, C070400, C070500, C07????, C080000, C080001, C080002, C080010, C080020, C080100, C080101, C080102, C080200, C080201, C080202, C080203, C080300, C080301, C080400, C080500, C080600, C080700, C08????, C090000, C090100, C090200, C090300, C090400, C090410, C09????, C0A0000, C0A????, C0B0000, C0B0100, C0B0200, C0B1000, C0B2000, C0B3000, C0B4000, C0B????, C0C0000, C0C0010, C0C0100, C0C0200, C0C0300, C0C0310, C0C0320, C0C0330, C0C03??, C0C03FE, C0C0400, C0C0500, C0C0600, C0C0700, C0C0800, C0C0900, C0C0A00, C0C????, C0D0000, C0D0100, C0D1000, C0D1100, C0D1200, C0D2000, C0D2100, C0D????, C0E????, C0F0100, C0F0200, C0F0300, C0F0400, C0F????, C100000, C101000, C10????, C110000, C110100, C111000, C112000, C11????, C12????, C13????, C??????, V1033, V10B9, V1106, V3388, V8086, D10330035, D10B91533, D10B95229, D10B95237, D10B95451, D10B95457, D10B97101, D11063483, D33880026, D8086B154, D8086100E, HPCIDEV:PCIDevices, SPCIDEV:PCIDevices, HPCIINF:PCIInfo, SPCIINF:PCIInfo
+
+Processed.ROOL.Titanium.01.Common.Resources.Portable.Messages: BadBMUVar, BadBMUCmd, BMUBusy, BMUVecClaim, NoSpeed2, BadSpeed2, BadFlags, BadBMU, BMUFault, UKSensor
+
+Processed.ROOL.Titanium.01.Common.Resources.RAMFS.Messages: SizeErr, HRFSRAM:Ram, SRFSRAM:Ram
+
+Processed.ROOL.Titanium.01.Common.Resources.ResourceFS.Messages: RFSDreg, RFSReg, HRFSRFS:ResourceFS, SRFSRFS:ResourceFS
+
+Processed.ROOL.Titanium.01.Common.Resources.ScreenMode.Messages: E00, E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, E11, E12, E13, E14, E15, E18, E19, E20, E22, E23, E24, E25, E26, E27, E28, E29, NoName, HSMDLMF:LoadModeFile, SSMDLMF:LoadModeFile, HSMDSMF:SaveModeFile, SSMDSMF:SaveModeFile
+
+Processed.ROOL.Titanium.01.Common.Resources.Switcher.Messages: E00, E01, E02, E04, E05, E06, E07, E08, E09, HTMGDTM:Desktop_TaskManager, STMGDTM:Desktop_TaskManager, HTMGSDT:StartDesktopTask, STMGSDT:StartDesktopTask
+
+Processed.ROOL.Titanium.01.Common.Resources.TerrMgr.Messages: UnkTerr, UnkAlph, UnkSub, Custom, NoTerr, BadTime, NoRule, HTRMTTS:Territories, STRMTTS:Territories, HTRMTTY:Territory, STRMTTY:Territory, HTRMCTY:Territory, STRMCTY:Territory, HTRMCDS, STRMCDS, HTRMCTZ:TimeZone, STRMCTZ:TimeZone
+
+Processed.ROOL.Titanium.01.Common.Resources.UK.Messages: UnkProp, BadStr, BOvFlow, BadFld, UnkSWI, NMZones
+
+Processed.ROOL.Titanium.01.Common.Resources.USBDriver.Messages: NoDevice, NoInterface, NoEndpoint, NoAlternate, EndpointUsed, BadPipe, BadXfer, NoStream, BadRequest, NotRootP, BadDevice, IncVers, XferFailed, QuirkCmd, NoSuchQuirk, QuirkMem, DefVID, DefPID, DevHdr, QrkHdr, BusHdr, BusTxf, DILen, DIRel, DICls, DISub, DIPrt, DIMxP, DIVid, DIPid, DIDid, DICfg, DIMfg, DIPrd, DISer, DISpd, CILen, CICur, CIQty, CICfg, CINom, CIPwr, CIAtt, IFace, IEndp, IHidd, ECtrl, EIso, EIsoY, EIsoA, EIsoS, EBulk, EIntr, Att80, Att40, Att20, UByt, UFrm, UHTy, UCls, ULen, UCcd, UDsc, Spd1, Spd2, Spd3, Spd4, Spd?, Mouse, HUSBBUS:USBBuses, SUSBBUS:USBBuses, HUSBDEV:USBDevices, SUSBDEV:USBDevices, HUSBDIN:USBDevInfo, SUSBDIN:USBDevInfo, HUSBCIN:USBConfInfo, SUSBCIN:USBConfInfo, HUSBCON:USBSetConfig, SUSBCON:USBSetConfig, HUSBINT:USBSetInterface, SUSBINT:USBSetInterface, HUSBRES:USBReset, SUSBRES:USBReset, HUSBQRK:USBQuirk, SUSBQRK:USBQuirk
+
+Processed.ROOL.Titanium.01.Common.Resources.VFPSupport.Messages: E00, E01, E02, E03, E04, E06, E07, S00, S01, S02, S03, S04, S05, IO, DZ, OF, UF, IX, ID
+
+Processed.ROOL.Titanium.01.Common.Resources.Wimp.Messages: NoClaim, BadSprite, BadSprites, BadOp, RectFull, TooBig, GetRect, Focus, BadHandle, TooMenus, BadExtent, BadPointer, NoTemplateFile, BadTemplate, BadFonts, BadSyntax, NoTasks, NoTemplate, InUse, BadPalFile, BadPalFile2, BadVersion, BadMessageSize, BadReasonCode, BadTaskHandle, CantTask, BadSubMenu, OwnerWindow, BadMode, BadTransfer, BadSlot, BadSysInfo, BadPtrInR1, BadEscapeState, BadIconHandle, BadR3, BadParent, NoSprites, TemplateEOF, CantKill, MF, ID, Space, ErrorF, ErrorP, ErrMemS, ErrMem, ErrNoMv, KillApp, KillProg, FileSe, HWNMICS:IconSprites, SWNMICS:IconSprites, HWNMPTR:Pointer, SWNMPTR:Pointer, HWNMTSP:ToolSprites, SWNMTSP:ToolSprites, HWNMCWF:WimpFlags, SWNMCWF:WimpFlags, HWNMWM:WimpMode, SWNMWM:WimpMode, HWNMWP:WimpPalette, SWNMWP:WimpPalette, HWNMWS:WimpSlot, SWNMWS:WimpSlot, HWNMWT:WimpTask, SWNMWT:WimpTask, HWNMWWD:WimpWriteDir, SWNMWWD:WimpWriteDir, HWNMWDD:WimpDragDelay, SWNMWDD:WimpDragDelay, HWNMWDM:WimpDragMove, SWNMWDM:WimpDragMove, HWNMDCD:WimpDoubleClickDelay, SWNMDCD:WimpDoubleClickDelay, HWNMDCM:WimpDoubleClickMove, SWNMDCM:WimpDoubleClickMove, HWNMAMD:WimpAutoMenuDelay, SWNMAMD:WimpAutoMenuDelay, HWNMMDD:WimpMenuDragDelay, SWNMMDD:WimpMenuDragDelay, HWNMFON:WimpFont, SWNMFON:WimpFont, HWNMKS:WimpKillSprite, SWNMKS:WimpKillSprite, HWNMASD:WimpAutoScrollDelay, SWNMASD:WimpAutoScrollDelay, HWNMAFD:WimpAutoFrontDelay, SWNMAFD:WimpAutoFrontDelay, HWNMIBS:WimpIconBarSpeed, SWNMIBS:WimpIconBarSpeed, HWNMIBA:WimpIconBarAcceleration, SWNMIBA:WimpIconBarAcceleration, HWNMICB:WimpIconiseButton, SWNMICB:WimpIconiseButton, HWNMAF:WimpAutoFrontIconBar, SWNMAF:WimpAutoFrontIconBar, HWNMSPP:WimpSpritePrecedence, SWNMSPP:WimpSpritePrecedence, HWNMBT:WimpButtonType, SWNMBT:WimpButtonType, HWNMCSM:WimpClickSubmenu, SWNMCSM:WimpClickSubmenu, HWNMVF:WimpVisualFlags, SWNMVF:WimpVisualFlags
+
+Processed.ROOL.Titanium.01.Common.Resources.XHCIDriver.Messages: E00, E01, E02, E03
+
+Processed.ROOL.Titanium.01.Common.Resources2.BootNet.Messages: KTooOld, HBNTCBN:BootNet, SBNTCBN:BootNet
+
+Processed.ROOL.Titanium.01.Common.Resources2.Chars.Messages: _TaskName, _Version, SysFont, Encs, Cats, Default, UTF8, UCode, UTrans, Char, DF1, DF2, DF3, DF4, DF5, DF6, DF7, DF8, DF9, DF10, DF11, DF12, DF13, DF14, Chars, Quit, Info, Help, Choices, ErrApp, Fatal1, Fatal2, Fatal3, FontErr1, FontErr2, FontErr3, FontErr4, FontErr5, CharErr
+
+Processed.ROOL.Titanium.01.Common.Resources2.DHCP.Messages: E00, E01, E02, E03, E17, St0, St1, St2, St3, St4, St5, St6, St7, St8, St?/St??, NevInf, NevMax, Headr, Iface, State, IPadd, DServ, Renew, Rbind, Xpire, Retry, HDHCPI:DHCPInfo, SDHCPI:DHCPInfo, HDHCPE:DHCPExecute, SDHCPE:DHCPExecute
+
+Processed.ROOL.Titanium.01.Common.Resources2.DOSFS.Messages: ERR00, ERR01, ERR02, ERR04, ERR06, ERR07, ERR08, ERR09, ERR0A, ERR0B, ERR0C, ERR0D, ERR0E, ERR0F, ERR10, ERR11, ERR12, ERR15, ERR16, ERR17, ERRA5, ERRAC, ERRB3, ERRB4, ERRC2, ERRC3, ERRC4, ERRC6, ERRFD, HDOSMAP:DOSMap, SDOSMAP:DOSMap, HDOSCPB:CopyBoot, SDOSCPB:CopyBoot
+
+Processed.ROOL.Titanium.01.Common.Resources2.DualSerial.Messages: E1, E2, E3, E4, E5, E6, E7, E8, E9, EA
+
+Processed.ROOL.Titanium.01.Common.Resources2.Edit.Messages: EditHelp, EditSyntax
+
+Processed.ROOL.Titanium.01.Common.Resources2.EtherCPSW.Messages: E01, E05, E06, E12, E22, E25, E40, E50, E55, E135, E200, E201, E202, E203, E204, E205, M00, M01, M02, M03, M04, M05, M06, M09, M10, M11, M12, M13, M16, M17, M18, M20, M21, M22, M23, M24, M25, M26, M27, M28, M29, M30, M31, M32, M33, M34, M35, M36, M37, HECPI:ECPInfo, SECPI:ECPInfo, HECPT:ECPTest, SECPT:ECPTest, HECPL:ECPLink, SECPL:ECPLink, HECPV:ECPVirtual, SECPV:ECPVirtual, HECPA:ECPAdvertise, SECPA:ECPAdvertise, HECPFC:ECPFlowControl, SECPFC:ECPFlowControl
+
+Processed.ROOL.Titanium.01.Common.Resources2.FilterMgr.Messages: HFLMFLT:Filters, SFLMFLT:Filters
+
+Processed.ROOL.Titanium.01.Common.Resources2.Freeway.Messages: FWType, FWOExt, FWONEx, FWDBuf, FWNBuf, FWNMem, FWOUnk, FWNNet, FWLock, FWLStr, FWNLoc, FWNAut, FWNoInet, FwStatusMsg, FWInvalSWI, FWSNoInt, FWSBadParam, Type1, Type2, Type5, NoRNet, RNet, ShowT, ShowN, ShowH, HFSHOW:FwShow, SFSHOW:FwShow, HFADDN:FwAddNet, SFADDN:FwAddNet, HFAUTO:FreewayAutoAddress, SFAUTO:FreewayAutoAddress
+
+Processed.ROOL.Titanium.01.Common.Resources2.Internet.Messages: PERM, NOENT, SRCH, INTR, IO, NXIO, 2BIG, NOEXEC, BADF, CHILD, DEADLK, NOMEM, ACCES, FAULT, NOTBLK, BUSY, EXIST, XDEV, NODEV, NOTDIR, ISDIR, INVAL, NFILE, MFILE, NOTTY, TXTBSY, FBIG, NOSPC, SPIPE, ROFS, MLINK, PIPE, DOM, RANGE, AGAIN/WOULDBLOCK, INPROGRESS, ALREADY, NOTSOCK, DESTADDRREQ, MSGSIZE, PROTOTYPE, NOPROTOOPT, PROTONOSUPPORT, SOCKTNOSUPPORT, OPNOTSUPP, PFNOSUPPORT, AFNOSUPPORT, ADDRINUSE, ADDRNOTAVAIL, NETDOWN, NETUNREACH, NETRESET, CONNABORTED, CONNRESET, NOBUFS, ISCONN, NOTCONN, SHUTDOWN, TOOMANYREFS, TIMEDOUT, CONNREFUSED, LOOP, NAMETOOLONG, HOSTDOWN, HOSTUNREACH, NOTEMPTY, PROCLIM, USERS, DQUOT, STALE, REMOTE, BADRPC, RPCMISMATCH, PROGUNAVAIL, PROGMISMATCH, PROCUNAVAIL, NOLCK, NOSYS, FTYPE, AUTH, NEEDAUTH, ModName, IntErr, IfBad, MmBad, InvalSWI, NoMm, Paniced, BadCli, MlcFail, IsAct, NotAct, ResUse, ResSkt, NoIf, InfoP, HInInfo, SInInfo, HInGate, SInGate
+
+Processed.ROOL.Titanium.01.Common.Resources2.ITable.Messages: BadMODE
+
+Processed.ROOL.Titanium.01.Common.Resources2.MimeMap.Messages: E00, E01, E02, Mt, Rt, Ex, HMM:MimeMap, SMM:MimeMap, HRM:ReadMimeMap, SRM:ReadMimeMap
+
+Processed.ROOL.Titanium.01.Common.Resources2.MManager.Messages: E11, E10, E02, E05, E09, E04
+
+Processed.ROOL.Titanium.01.Common.Resources2.Net.Messages: StaAcc, NotAcc, FullAd, Noclck, IfType, Down, StaNum, BrdCst, GlbBct, AccNet, ModSts, TxStat, Data, Immedt, ImmRep, Retry, Error, DtaAck, DtaRej, Local, Global, Dscard, RxStat, InvRep, MNSBan, Gteway, Gtewys, Warn, NoMap, NoRout, GwConf, BadSta, BadDev, BadInt, NtvEco, BadGwy, GtwSta, BadPort, TooBig, PtNtAlc, PortAlc, NoPorts, BadMask, NoHware, NotConf, TxOK, LineJam, NetErr, NotLstn, NoClk, TxReady, Txing, RxReady, Rxing, Rxd, NoReply, NotPres, BadNumb, BadStat, StnNLsn, StnNRpy, StnNPrs, StnNErr, HNETNMP:NetMap, SNETNMP:NetMap, HNETNWK:Networks, SNETNWK:Networks, HNETNST:NetStat, SNETNST:NetStat, HNETNPB:NetProbe, SNETNPB:NetProbe, HNETADM:AddMap, SNETADM:AddMap
+
+Processed.ROOL.Titanium.01.Common.Resources2.NetFiler.Messages: S01, S02, S03, S04, HNFLDNF:Desktop_NetFiler, SNFLDNF:Desktop_NetFiler
+
+Processed.ROOL.Titanium.01.Common.Resources2.NetFS.Messages: BadCode, BadOpt, UnkName, UnkNmbr, StNtFnd, WhoRU, NtLogOn, NLogOnU, NoDisc, BadDate, FSNtCap, BLNtCfg, BSrvrDd, BadVect, NotRel, NotFnd, FreeHed, FreeSpc, PasWd, OldPw, NewPw, Shutdwn, LogOff, Final, FS24Bit, CNFSCFS, CNFSCLB, Def, HNFSNET:Net, SNFSNET:Net, HNFSAFS:AddFS, SNFSAFS:AddFS, HNFSBYE:Bye, SNFSBYE:Bye, HNFSFRE:Free, SNFSFRE:Free, HNFSFS:FS, SNFSFS:FS, HNFSLFS:ListFS, SNFSLFS:ListFS, HNFSLON:Logon, SNFSLON:Logon, HNFSMNT:Mount, SNFSMNT:Mount, HNFSPAS:Pass, SNFSPAS:Pass, HNFSSDS:SDisc, SNFSSDS:SDisc, HNFSCFS:FS, SNFSCFS:FS, HNFSCLB:Lib, SNFSCLB:Lib
+
+Processed.ROOL.Titanium.01.Common.Resources2.NetPrint.Messages: PSNtFnd, PSStat, PSBusy, PSInUse, PrStat, PSName, PSHead, OldServ, HNPRSPS:SetPS, SNPRSPS:SetPS, HNPRPS:PS, SNPRPS:PS, HNPRLPS:ListPS, SNPRLPS:ListPS, HNPRCPS:PS, SNPRCPS:PS
+
+Processed.ROOL.Titanium.01.Common.Resources2.Obey.Messages: HOBYOBY:Obey, SOBYOBY:Obey
+
+Processed.ROOL.Titanium.01.Common.Resources2.Pinboard.Messages: BadOpts, NotSprt, NoRoom, CopyR, NoDot, HPINDPB:Desktop_Pinboard, SPINDPB:Desktop_Pinboard, HPINADD:AddTinyDir, SPINADD:AddTinyDir, HPINREM:RemoveTinyDir, SPINREM:RemoveTinyDir, HPINPB:Pinboard, SPINPB:Pinboard, HPINPIN:Pin, SPINPIN:Pin, HPINBCK:BackDrop, SPINBCK:BackDrop, HPINOPT:PinboardOptions, Switches:PinboardOptions, SPINOPT:PinboardOptions
+
+Processed.ROOL.Titanium.01.Common.Resources2.PipeFS.Messages: M00, M01, M02, M03, HPFSCPY:PipeCopy, SPFSCPY:PipeCopy
+
+Processed.ROOL.Titanium.01.Common.Resources2.RAMFSFiler.Messages: RFSMess, HasData, FActive, TooShrt, HRFLDFL:Desktop_RAMFSFiler, SRFLDFL:Desktop_RAMFSFiler
+
+Processed.ROOL.Titanium.01.Common.Resources2.ResFiler.Messages: HRSFDRF:Desktop_ResourceFiler, SRSFDRF:Desktop_ResourceFiler
+
+Processed.ROOL.Titanium.01.Common.Resources2.Resolver.Messages: E00, E01, E02, E06, E07, HRC:ResolverConfig, SRC:ResolverConfig
+
+Processed.ROOL.Titanium.01.Common.Resources2.RTC.Messages: E00, E01, E02, E03, E04
+
+Processed.ROOL.Titanium.01.Common.Resources2.ScrBlanker.Messages: HSCBBLT:BlankTime, SSCBBLT:BlankTime, HSCDIM:BlankTime, SSCDIM:BlankTime
+
+Processed.ROOL.Titanium.01.Common.Resources2.SCSIDriver.Messages: Dev, Typ, Cap, Ven, Prd, Rev, Hst, T00, T01, T02, T03, T04, T05, T06, T07, T08, T09, T??/Unk, E00, E01, E02, E03, E04, E05, E06, E07, E08, E09, E0a, E0b, E0c, E0d, E0e, E0f, E10, E11, E12, E13, E14, E80, E81, E82, Ec0, Ec1, Ec2, Ec3, Ec4, Ec5, Ec6, Ec7, Ec8, Ec9, Eca, Ecb, Ecc, Ecd, Ece, Ecf, Ed0, HDV:SCSIDevices, SDV:SCSIDevices
+
+Processed.ROOL.Titanium.01.Common.Resources2.SCSIFiler.Messages: DLSpace, DNShort, DifDisc, UnkIcon, TooShrt, UsrData, BkpDfct, HSFLDSK:Desktop_SCSIFiler, SSFLDSK:Desktop_SCSIFiler
+
+Processed.ROOL.Titanium.01.Common.Resources2.SCSIFS.Messages: DrvUnK, SSNSpt, BadSTy, HFS:SCSI, SFS:SCSI, HDC:SCSIFSDirCache, SDC:SCSIFSDirCache, HFl:SCSIFSFloppies, SFl:SCSIFSFloppies, HDi:SCSIFSDiscs, SDi:SCSIFSDiscs, HDr:SCSIFSDrive, SDr:SCSIFSDrive
+
+Processed.ROOL.Titanium.01.Common.Resources2.SCSISoftUSB.Messages: SPOPUP, HPOPUP
+
+Processed.ROOL.Titanium.01.Common.Resources2.SDFS.Messages: Card, ExtEscape, BadDrive, DriveEmpty, BadFileCore, NotMem, CardLocked, HSDFSDF:SDFS, SSDFSDF:SDFS, HSDFDRI:SDFSdrive, SSDFDRI:SDFSdrive
+
+Processed.ROOL.Titanium.01.Common.Resources2.SDFSFiler.Messages: DLSpace, DNShort, DifDisc, UnkIcon, TooShrt, UsrData, BkpDfct, HSFLDSK:Desktop_SDFSFiler, SSFLDSK:Desktop_SDFSFiler
+
+Processed.ROOL.Titanium.01.Common.Resources2.ShellCLI.Messages: WActive, SActive, NoSpawn, Greeting, HSCLSCL:ShellCLI, SSCLSCL:ShellCLI
+
+Processed.ROOL.Titanium.01.Common.Resources2.SoundChann.Messages: HSCHVOL:Volume, SSCHVOL:Volume, HSCHVOI:Voices, SSCHVOI:Voices, HSCHCVO:ChannelVoice, SSCHCVO:ChannelVoice, HSCHSND:Sound, SSCHSND:Sound, HSCHTUN:Tuning, SSCHTUN:Tuning, HSCHSDF:SoundDefault, SSCHSDF:SoundDefault
+
+Processed.ROOL.Titanium.01.Common.Resources2.SoundCtrl.Messages: E02, E03, HSCTMXV:MixVolume, SSCTMXV:MixVolume
+
+Processed.ROOL.Titanium.01.Common.Resources2.SoundDMA.Messages: M00, M01, M02, M03, M04, M05, M06, M07, HSDMAUD:Audio, SSDMAUD:Audio, HSDMSPK:Speaker, SSDMSPK:Speaker, HSDMSTR:Stereo, SSDMSTR:Stereo, HSDMSDG:SoundGain, SSDMSDG:SoundGain, HSDMSDS:SoundSystem, SSDMSDS:SoundSystem
+
+Processed.ROOL.Titanium.01.Common.Resources2.SoundSched.Messages: M00, M01, HSSCTEM:Tempo, SSSCTEM:Tempo, HSSCQSN:QSound, SSSCQSN:QSound
+
+Processed.ROOL.Titanium.01.Common.Resources2.SprExtend.Messages: NoSprit, DivZero, AppErr, BadCBlk, BadFlgs, BadGScl, BadRect, BadTfrm, BadTran, InvRC, NoIRoom, NoMem, NoWork, InvalidSpriteMode, BadDepth, BadType, BadJPEG, BadJPEGUnsupported, BadJPEGProgressive, BadJPEGPlot, JPEGNoRoom, JPEGFatal, BadData, NoGrScl, DynName, DynCoef, DynTran
+
+Processed.ROOL.Titanium.01.Common.Resources2.SpriteUtil.Messages: NoSpMem, NoSpDef, SInfo, HSPUSCH:SChoose, SSPUSCH:SChoose, HSPUSGT:SGet, SSPUSGT:SGet, HSPUSFX:SFlipX, SSPUSFX:SFlipX, HSPUSFY:SFlipY, SSPUSFY:SFlipY, HSPUDEL:SDelete, SSPUDEL:SDelete, HSPULST:SList, SSPULST:SList, HSPUSLD:SLoad, SSPUSLD:SLoad, HSPUMRG:SMerge, SSPUMRG:SMerge, HSPUNEW:SNew, SSPUNEW:SNew, HSPUSSV:SSave, SSPUSSV:SSave, HSPUINF:SInfo, SSPUINF:SInfo, HSPUREN:SRename, SSPUREN:SRename, HSPUCPY:SCopy, SSPUCPY:SCopy, HSPUSCS:ScreenSave, SSPUSCS:ScreenSave, HSPUSCL:ScreenLoad, SSPUSCL:ScreenLoad, SChoose:ScreenLoad, SDelete:ScreenLoad, SList:ScreenLoad, SLoad:ScreenLoad, SMerge:ScreenLoad, SNew:ScreenLoad, SFlipX:ScreenLoad, SFlipY:ScreenLoad, SRename:ScreenLoad, SCopy:ScreenLoad, SSave:ScreenLoad, SGet:ScreenLoad, SInfo:ScreenLoad, ScreenSave:ScreenLoad, ScreenLoad:ScreenLoad
+
+Processed.ROOL.Titanium.01.Common.Resources2.Squash.Messages: COM1, COM2, COM3, COM4
+
+Processed.ROOL.Titanium.01.Common.Resources2.SSound.Messages: NmLin, NmLog, NmPow, EMaxH, EOutR, ENIns, EDNum, ENoDr, ECant, DrvDev, DrvTyp
+
+Processed.ROOL.Titanium.01.Common.Resources2.TaskWindow.Messages: M00, M01, M02, M03, M04, M05, M06, M07, M08, M09, M10, HTSWST:ShellCLI_Task, STSWST:ShellCLI_Task, HTSWSTQ:ShellCLI_TaskQuit, STSWSTQ:ShellCLI_TaskQuit, HTSWTSW:TaskWindow, STSWTSW:TaskWindow, HTSWTSN:TaskWindow, STSWTSN:TaskWindow
+
+Processed.ROOL.Titanium.01.Common.Resources3.CDFS.Messages: ea, eb, ec, ed, ee, ef, eg, eh, ei, ej, ek, el, em, en, eo, ep, eq, er, am, uk, ch, w1, w2, w3, w4, w5, w6, w7, w8, dr, fr, h1:Eject, s1:Eject, h2:CDFS, s2:CDFS, h3:CDDevices, s3:CDDevices, h4:CDROMDrives, s4:CDROMDrives, h5:CDROMBuffers, s5:CDROMBuffers, h6:Lock, s6:Lock, h7:Unlock, s7:Unlock, h8:Play, s8:Play, h9:PlayList, s9:PlayList, ha:Stop, sa:Stop, hb:Drive, sb:Drive, hc:WhichDisc, sc:WhichDisc, hd:Bye, sd:Bye, he:PlayMSF, se:PlayMSF, hf:Supported, sf:Supported, hg:CDSpeed, sg:CDSpeed, hh:Mount, sh:Mount, hi:Dismount, si:Dismount, hj:Free, sj:Free
+
+Processed.ROOL.Titanium.01.Common.Resources3.CDFSDriver.ATAPI.Messages: NoDrive, NotAud, DrEmpty, DLocked, BadMode, SChNSup, NotAudT, BadDisc, NotSupp, BadHandle, SCSITO, SCSIRE, SCSITS, SCSITE0, SCSITE1, SCSITE2, SCSITE3, SCSITE4, SCSITE5, SCSITE6, SCSITE7, SCSITE8, SCSITE9, SCSITEA, SCSITEB, SCSITEC, SCSITED, SCSITEE, SCSITEF, SCSITEU
+
+Processed.ROOL.Titanium.01.Common.Resources3.CDFSDriver.CDFSDriver.Messages: NoConfD, NoAlign, DrvNSup, ModNSup, CntPlay, DrvEmpt, NoDrive, BadMode, BadMins, BadSecs, BadBlks, PhysBad, DLocked, BadData, NoSubCh, BadDvID, BadCard, BadLUNN, NotAudi, BadDisc, BadAddr, NotSupp, DrNPres, SWINSup, NoMoreD, NotRegd, UnkCDOp
+
+Processed.ROOL.Titanium.01.Common.Resources3.CDFSDriver.SCSI.Messages: BadArgs, BadResp, NotAud, NoTrack, SWINSup
+
+Processed.ROOL.Titanium.01.Common.Resources3.CDFSFiler.Messages: NoDrive, DrEmpty, TrackNo, NoAudio, HCFLDCF:Desktop_CDFSFiler, SCFLDCF:Desktop_CDFSFiler
+
+Processed.ROOL.Titanium.01.Common.Resources3.ColourDbox.Messages: E00, E01, E02, E11, E12, E13, Title
+
+Processed.ROOL.Titanium.01.Common.Resources3.ColourMenu.Messages: E00, E01, E02, E11, E12, E13, Title, Help, None
+
+Processed.ROOL.Titanium.01.Common.Resources3.DCS.Messages: E01, E02
+
+Processed.ROOL.Titanium.01.Common.Resources3.FileInfo.Messages: E00, E01, E02, E11, E12, E13, YES, NO, Unt, dir, app
+
+Processed.ROOL.Titanium.01.Common.Resources3.FontDbox.Messages: E00, E01, E02, E11, E12, E13, E14, E21, E22, E31, Plain, System
+
+Processed.ROOL.Titanium.01.Common.Resources3.FontMenu.Messages: E00, E01, E02, E11, E12, E13
+
+Processed.ROOL.Titanium.01.Common.Resources3.Iconbar.Messages: E01, E02, E03, E04, E11, E12, E13, E14, E20, E21
+
+Processed.ROOL.Titanium.01.Common.Resources3.Menu.Messages: E00, E01, E02, E11, E12, E13, E14, E21, E22, E31, E32, E33
+
+Processed.ROOL.Titanium.01.Common.Resources3.PrintDbox.Messages: E00, E01, E02, E11, E12, E13, E31, None, Unk
+
+Processed.ROOL.Titanium.01.Common.Resources3.ProgInfo.Messages: E00, E01, E02, E11, E12, E13
+
+Processed.ROOL.Titanium.01.Common.Resources3.SaveAs.Messages: E00, E01, E02, E03, E11, E12, E13, E21, E23, E31, E32, E33, E34, Sel
+
+Processed.ROOL.Titanium.01.Common.Resources3.Scale.Messages: E00, E01, E02, E11, E12, E13
+
+Processed.ROOL.Titanium.01.Common.Resources3.TextGadget.Messages: E00, E01, E02, E03, E04, E05, E06, E07, E08, E09, E0a, E0b, E0c, E0d, E0e, WSName
+
+Processed.ROOL.Titanium.01.Common.Resources3.ToolAction.Messages: E20, E21, E22
+
+Processed.ROOL.Titanium.01.Common.Resources3.Toolbox.Messages: E00, E01, E02, E03, E04, E05, E06, E07, E08, E09, E0a, E0b, E0c, E0d, E0e, E0f
+
+Processed.ROOL.Titanium.01.Common.Resources3.Window.Messages: E01, E02, E03, E04, E05, E11, E12, E13, E14, E15, E16, E17, E18, E20
+

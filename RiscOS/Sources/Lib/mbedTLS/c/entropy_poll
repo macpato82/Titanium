@@ -1,0 +1,96 @@
+/*
+ *  Platform-specific and custom entropy polling functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+#if !defined(MBEDTLS_CONFIG_FILE)
+#include "mbedtls/config.h"
+#else
+#include MBEDTLS_CONFIG_FILE
+#endif
+
+#include <string.h>
+
+#ifndef RISCOS
+#error "This is a platform specific file for RISC OS only"
+#endif
+
+#if defined(MBEDTLS_ENTROPY_C)
+
+#include "mbedtls/entropy.h"
+#include "entropy_poll.h"
+#define UNUSED(k) (k) = (k) /* Silence warnings about unused args */
+
+#if defined(MBEDTLS_TIMING_C)
+#include "mbedtls/timing.h"
+#endif
+#if defined(MBEDTLS_HAVEGE_C)
+#include "mbedtls/havege.h"
+#endif
+#include "mbedtls/platform.h"
+
+#if !defined(MBEDTLS_NO_PLATFORM_ENTROPY)
+
+#include <stdlib.h>
+
+int mbedtls_platform_entropy_poll(void *data,
+                                  unsigned char *output, size_t len, size_t *olen)
+{
+    size_t read_len;
+
+    for (read_len = 0; read_len < len; read_len++) {
+        output[read_len] = (unsigned char) rand();
+    }
+
+    *olen = len;
+    UNUSED(data);
+
+    return 0;
+}
+#endif /* !MBEDTLS_NO_PLATFORM_ENTROPY */
+
+#if defined(MBEDTLS_TEST_NULL_ENTROPY)
+int mbedtls_null_entropy_poll(void *data,
+                              unsigned char *output, size_t len, size_t *olen)
+{
+    *olen = 0;
+
+    if (len < sizeof(unsigned char)) {
+        return 0;
+    }
+    *olen = sizeof(unsigned char);
+    UNUSED(data);
+    UNUSED(output);
+
+    return 0;
+}
+#endif
+
+#if defined(MBEDTLS_ENTROPY_NV_SEED)
+int mbedtls_nv_seed_poll(void *data,
+                         unsigned char *output, size_t len, size_t *olen)
+{
+    unsigned char buf[MBEDTLS_ENTROPY_BLOCK_SIZE];
+    size_t use_len = MBEDTLS_ENTROPY_BLOCK_SIZE;
+
+    memset(buf, 0, MBEDTLS_ENTROPY_BLOCK_SIZE);
+
+    if (mbedtls_nv_seed_read(buf, MBEDTLS_ENTROPY_BLOCK_SIZE) < 0) {
+        return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
+    }
+
+    if (len < use_len) {
+        use_len = len;
+    }
+
+    memcpy(output, buf, use_len);
+    *olen = use_len;
+    UNUSED(data);
+
+    return 0;
+}
+#endif /* MBEDTLS_ENTROPY_NV_SEED */
+
+#endif /* MBEDTLS_ENTROPY_C */

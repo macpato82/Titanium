@@ -1,0 +1,255 @@
+
+Syntax: *
+ the 
+tion
+ controlle
+Configure 
+ not 
+number
+director
+This function gives the 
+ to 
+ file
+ing 
+current
+Target error - 
+ of 
+name
+ and 
+iling system
+ for 
+. Try the operation again but if the error persists inform your network manager
+display
+ sets the 
+recognise
+ in
+<reg>,<reg>
+ <filename
+Colour <&RRGGBB>Set the colour of the 
+ is 
+ed 
+con
+The destination disc format is different from the source disc format. Reformat the destination disc so that it is the same format as the source disc and try again
+ter
+expression
+variable
+Options:	-wimpslot sets the memory to be allocated	-name sets the task name	-ctrl allows control characters through	-display opens the task window immediately, rather than waiting for a character to be printed	-quit makes the task quit after the command even if the task window has been ope
+Memory allocation failed
+Unknown 
+esktop
+ not support
+File
+Invalid 
+command
+ of the 
+[<cond>]
+ive
+ server
+s a
+ re
+memory
+channel
+evice
+specifi
+When Reset is pressed, the following keys have an effect:SHIFT causes an autoboot (unless Boot is configured).keypad-* causes the supervisor to be run rather than the configured language.See also *Help PowerOn
+ation 
+default
+addres
+ has active tasks
+ cannot 
+loating point exception:
+.
+ystem 
+prite
+ent
+s the 
+ character
+parameter
+uffer too shor
+ of a number (<factor>)
+ or 
+module
+sta
+Bad 
+ on the icon bar, and uses the Filer to display 
+ with
+line
+oun
+ect
+ use *Desktop instead
+ a file (text/tokenised)
+able
+compatible
+his 
+string
+ from
+<expr>
+indow
+ does not exist
+disc
+function
+ list
+value
+ se
+ in-core text/tokenised program
+Configure Wimp
+ drive
+The 
+.Do not use *Desktop_
+ in 
+ erro
+ must be
+ ope
+etwork
+reg>
+ structure
+Too many
+already
+terfac
+Not enough 
+ between two integers. Priority 
+applic
+ate
+The *TaskWindow command allows a background task to be started, which will obtain a task window if it needs to do any screen I/O.Options:	-wimpslot sets the memory to be allocated	-name sets the task name	-ctrl allows control characters through	-display opens the task window immediately, rather than waiting for a character to be printed	-quit makes the task quit after the command even if the task window has been opened
+$Options and those given to the command.Options: (use ~ to force off,eg. ~
+itialis
+er 
+pro
+creen
+form
+configur
+lock
+ont
+ [<
+Delay sets the time in 1/10 second unit
+all
+librar
+ to a system variable. Other types of value can be assigned with *Set
+start
+re 
+source
+ then press SPACE bar
+Method,
+sion
+ that
+al 
+elete
+ -help activated (use HELP at the > prompt for more help)
+, not recognised
+inter
+ directory
+There is not enough memory to 
+ give
+ trans
+There is a problem with the network. Inform your network manager (
+ not foun
+object
+ co
+ on
+use
+ server name>|<station number
+program
+space
+ [<disc spec.>
+ too 
+BASIC
+Disc name must be at least two characters lon
+is not supported by this version of the SpriteExtend 
+statement
+ handl
+No 
+This pseudo-variable reads or sets the 
+assword
+ype mismatch
+CD-ROM drive
+anage
+background
+graphics 
+<31><31
+ver
+move
+	Prompt for confirmation of 
+control
+ select
+ directories
+ does not explicitly quote either a name or a 
+ exist
+(start,  length) 
+Can't
+SCSI
+hange
+position
+string 
+ number
+ icon
+ passed to 
+Display
+file
+ing
+load
+Syntax: *TaskWindow <command> [[-wimpslot] <n>K] [[-name] <taskname>] [-ctrl] [-display] [-quit
+out
+Syntax: *S
+ -quit <filename> to run a file (text/tokenised) and quit when done.BASIC
+essage
+res
+size
+ach
+ed by 
+. Quit any unwanted applications or see the RISC OS User Guide for ways to maximise memory
+available 
+ register
+ard
+ason cod
+estination 
+s the current
+ bridg
+Disc
+ation
+to the 
+type
+ set
+Syntax: *SRename <old name> <new name
+ has 
+TopLeft, BottomLeft, TopRight, BottomRight)Without switch, icons are 
+proce
+Move sets the distance in OS units that the pointer has to move after a single click for a d
+Syntax: *Configure 
+ information 
+Filer provides the 
+ close
+ mode
+MiscOp 
+Territor
+given
+option
+defin
+ime
+ort
+witch
+Syntax: *Desktop_
+ status
+ be
+ ma
+Missing 
+text
+No such 
+50-compatible serial controlle
+Illegal 
+and
+argument
+lphabet
+{off}
+ <reg>
+ does
+ of file
+BorderOppColour <&RRGGBB>Set the colour of the bottom right portion
+Task
+lour
+or 
+point
+ree 
+utton
+|M|
+ not know
+ound

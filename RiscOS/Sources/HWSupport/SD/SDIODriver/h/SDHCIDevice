@@ -1,0 +1,115 @@
+/*
+ * CDDL HEADER START
+ *
+ * The contents of this file are subject to the terms of the
+ * Common Development and Distribution License (the "Licence").
+ * You may not use this file except in compliance with the Licence.
+ *
+ * You can obtain a copy of the licence at
+ * cddl/RiscOS/Sources/HWSupport/SD/SDIODriver/LICENCE.
+ * See the Licence for the specific language governing permissions
+ * and limitations under the Licence.
+ *
+ * When distributing Covered Code, include this CDDL HEADER in each
+ * file and include the Licence file. If applicable, add the
+ * following below this CDDL HEADER, with the fields enclosed by
+ * brackets "[]" replaced with your own identifying information:
+ * Portions Copyright [yyyy] [name of copyright owner]
+ *
+ * CDDL HEADER END
+ */
+/*
+ * Copyright 2012 Ben Avison.  All rights reserved.
+ * Portions Copyright 2019 John Ballance.
+ * Use is subject to license terms.
+ */
+
+#ifndef INTERFACE_SDHCIDEVICE_H
+#define INTERFACE_SDHCIDEVICE_H
+
+#include <stdbool.h>
+#include <stdint.h>
+#include "Global/HALDevice.h"
+
+/** SDHCI slot info structure */
+typedef struct
+{
+  uint32_t       flags;
+  volatile void *stdregs;
+}
+sdhci_slotinfo_t;
+
+/** Scatter list entry */
+typedef struct
+{
+  uint8_t *address;
+  size_t   length;
+}
+sdhci_scatter_t;
+
+/** Data structure for exchanging state variables with OpPoll entry */
+typedef struct
+{
+    /* Items that are read-only for the HAL device */
+    bool             chk_r1;          /**< generate errors from R1 (memory) response */
+    bool             chk_r5;          /**< generate errors from R5 (IO) response */
+    uint16_t         transfer_mode;   /**< value to program into the transfer_mode register */
+    uint16_t         command;         /**< value to program into the command register */
+    bool             is_mmc;          /**< handle R1 responses according to MMC rather than SD rules */
+    uint32_t         argument;        /**< value to program into the argument register */
+    void            *response;        /**< pointer to response buffer */
+    uint16_t         block_size;      /**< number of bytes transferred on data lines between CRCs */
+    /* Items that are read-write for the HAL device */
+    uint16_t         block_count;     /**< number of blocks remaining in data transfer */
+    size_t           total_length;    /**< length of data transfer remaining, bytes */
+    size_t           scatter_offset;  /**< current byte index into current block on scatter list */
+    sdhci_scatter_t *list;            /**< current block in scatter list for data transfer */
+}
+sdhci_op_state_t;
+
+/** SDHCI HAL device structure */
+typedef struct sdhcidevice
+{
+  struct device     dev;
+  uint32_t          flags;
+  uint32_t          slots;
+  sdhci_slotinfo_t *slotinfo;
+  void            (*WriteRegister)(struct sdhcidevice *, uint32_t, volatile void *, uint32_t, uint32_t);
+  uint64_t        (*GetCapabilities)(struct sdhcidevice *, uint32_t);
+  uint32_t        (*GetVddCapabilities)(struct sdhcidevice *, uint32_t);
+  void            (*SetVdd)(struct sdhcidevice *, uint32_t, uint32_t);
+  void            (*SetBusMode)(struct sdhcidevice *, uint32_t, bool);
+  void            (*PostPowerOn)(struct sdhcidevice *, uint32_t);
+  void            (*SetBusWidth)(struct sdhcidevice *, uint32_t, uint32_t);
+  uint32_t        (*GetMaxCurrent)(struct sdhcidevice *, uint32_t);
+  uint32_t        (*SetSDCLK)(struct sdhcidevice *, uint32_t, uint32_t);
+  uint32_t        (*GetTMCLK)(struct sdhcidevice *, uint32_t);
+  void            (*SetActivity)(struct sdhcidevice *, uint32_t, uint32_t);
+  bool            (*GetCardDetect)(struct sdhcidevice *, uint32_t);
+  bool            (*GetWriteProtect)(struct sdhcidevice *, uint32_t);
+  union
+  {
+    struct
+    {
+      void        (*TriggerCommand)(struct sdhcidevice *, uint32_t, uint16_t, uint16_t);
+    } sdhci;
+    struct
+    {
+      size_t      (*OpWorkspace)(void);
+      void        (*SlotReset)(struct sdhcidevice *, uint32_t);
+      bool        (*PollSlotReset)(struct sdhcidevice *, uint32_t);
+      void        (*SetDataTimeout)(struct sdhcidevice *, uint32_t, uint32_t);
+      void        (*OpInit)(struct sdhcidevice *, uint32_t, sdhci_op_state_t *, void *);
+      uint32_t    (*OpPoll)(struct sdhcidevice *, uint32_t, sdhci_op_state_t *, void *, int32_t);
+      bool        (*OpAbort)(struct sdhcidevice *, uint32_t, sdhci_op_state_t *, void *);
+      void        (*SetDMASpace)(struct sdhcidevice *, uint32_t, void *, uint64_t);
+      size_t      (*GetDMASpace)(struct sdhcidevice *, uint32_t, size_t *, size_t *);
+      void        (*EnableCardInterrupt)(struct sdhcidevice *, uint32_t, bool);
+      bool        (*CardInterruptStatus)(struct sdhcidevice *, uint32_t);
+    } soft;
+  } ver;
+}
+sdhcidevice_t;
+
+#endif
+/* In the exported copy of this file, the Hdr2H translation of hdr.SDHCIDevice will follow. */

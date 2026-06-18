@@ -1,0 +1,1139 @@
+SDIODRIVER SPECIFICATION
+
+Low-level interface
+
+SD host controllers may be attached via a PCI bus as was anticipated by the SD
+standard. In this case, the SDIODriver would scan the PCI bus for devices of the
+appropriate class. It should be noted however that at the present time there are
+no RISC OS platforms with such an architecture, so this is considered a future
+enhancement.
+
+Host controllers with alternate attachments are discovered via the HAL Device
+API. This potentially includes hot-pluggable host controllers, as is true of all
+HAL Devices. The HAL Device looks like this:
+
+type        bits 15-8 = 5 (a new type for controllers of peripheral buses)
+            bits 7-0 = 1 for SDIO controller
+id          bits 15-0 = 1 for generic SDHCI controller
+location    bits 31-28 = 5 (interconnect) for OMAP3
+            bits 27-24 = 1 (L4 interconnect) for OMAP3
+            bits 23-16 = 0 for OMAP3
+            bits 15-8 = 0 for OMAP3
+            bits 7-0 = 0 for OMAP3
+version     Three major versions have currently been defined, and all are still
+            in use.
+            * Major version 0 is for controllers which conform to the SDHCI
+              standard, to a greater or lesser extent. Within major version 0:
+              + Minor version 0 indicates no extensions are supported by the
+                device.
+              + Minor version 1 adds the presence of the TriggerCommand function
+                pointer (which may still be NULL).
+              + Minor version 2 indicates that the devicenumber field has been
+                verified as valid (earlier versions of SDIODriver didn't
+                enable interrupts, so HAL devices have made it into the wild
+                with incorrect device numbers).
+            * Major version 1 is for controllers which do not implement any
+              SDHCI registers, and require most function entry points to be
+              implemented. These are therefore known as soft controllers. Major
+              version  1 deletes the TriggerCommand function, and also adds a
+              number of additional new ones. Within major version 1:
+              + Minor version 0 indicates no extensions are supported by the
+                device.
+              + Minor version 1 indicates that the devicenumber field has been
+                verified as valid (earlier versions of SDIODriver didn't
+                enable interrupts, so HAL devices have made it into the wild
+                with incorrect device numbers).
+            * Major version 2 is for soft controllers which require SDIODriver
+              to implement cacheable DMA space. Entry points for these type-2
+              soft controllers are the same as for type-1 soft controllers,
+              but add a few additional entry points to support SDIO interrupts.
+              For type-2 soft controllers, the devicenumber field is assumed
+              to be valid irrespective of the minor version number (which should
+              be 0 for implementations conforming to this version of the
+              documentation).
+description, address, reserved1, Activate, Deactivate, Reset, Sleep,
+devicenumber, TestIRQ, ClearIRQ, reserved2 are standard device fields and
+require no further description
+flags       bits 31-13 = reserved for flags that apply equally to SDHCI and soft
+                         controllers, all currently 0
+            bit 12 set => perform identification phase at 50 kHz rather than
+                         400 kHz (typically helpful if stronger pull-ups cannot
+                         be engaged in SetBusMode when open-drain is selected)
+            bits 11-8 = block count limit. If these bits have value 0, then
+                        it can be assumed the controller is capable of transfers
+                        with 65535 blocks. Otherwise these bits hold
+                        log2(max-blocks)+1 where 1 <= max-blocks <= 16384
+            SDHCI controllers:
+            bits 7-3 = reserved, 0
+            bit 2 set => the controller doesn't set the error interrupt bit in
+                         the normal interrupt status register
+            bit 1 set => the controller doesn't strip the byte containing the CRC
+                         and end bit from R2 responses before placing in the
+                         response registers
+            bit 0 set => all register reads and writes must use 32-bit accesses
+            Type-1 soft controllers:
+            bits 7-0 = controller private flags, considered opaque by SDIODriver
+            Type-2 soft controllers:
+            bits 7-2 = reserved, 0
+            bit 1 set => OpPoll must be called with a VFP context active
+            bit 0 set => the block of memory provided by GetDMASpace must be
+                         cacheable (not just bufferable)
+slots       bits 31-0 = number of slots supported by this host controller -
+                        or technically, the number of standard register sets it
+                        provides, which corresponds to the number of CMD lines
+                        it drives. Each slot is normally used to drive a single
+                        MMC or SD device, but it is possible that multiple
+                        devices can be driven by a single slot - for MMC buses
+                        this is achieved by the use of an identifying field, the
+                        RCA, in the command argument; for SD buses, a Shared Bus
+                        configuration can be implemented in hardware, with a
+                        separate CLK line for multiple devices that share the
+                        same CMD line.
+slotinfo    bits 31-0 = pointer to array of structures giving further
+                        information about each slot (see below).
+void WriteRegister(device *controller, uint32_t slot, void *address,
+                   uint32_t value, uint32_t width)
+                        SDHCI controllers:
+                        function pointer to a custom routine to write a register
+                        in the SDHCI controller. If flags bit 0 is set, then
+                        writes have already been amalgamated into 32-bit words
+                        and the address will be word aligned. Otherwise the
+                        fourth parameter represents the value to be written,
+                        zero-extended to a 32-bit value, and the fifth contains
+                        the width of the register in bytes. This entry is
+                        intended for controllers that have special requirements
+                        (such as the BCM2835 where the rate of register pokes
+                        must be strictly limited). In other cases, a null
+                        pointer can be given, and the register will be written
+                        using a simple data write operation.
+                        Soft controllers:
+                        unused
+uint64_t GetCapabilities(device *controller, uint32_t slot)
+                        function pointer to a custom routine to read the
+                        controller's capabilities register. This is intended for
+                        controllers that do not implement this standard SDHCI
+                        register; if the register is implemented, you can use
+                        a null pointer instead. The function is mandatory for
+                        soft controllers. The value returned from this function
+                        should follow the bit layout as defined in the SDHCI
+                        standard. Bits which SDIODriver currently pays attention
+                        to are:
+                        bits 0-5 => TMCLK frequency (but note that GetTMCLK is
+                          used in preference)
+                        bit 7 => TMCLK frequency units: 0 = kHz, 1 = MHz (but
+                          note that GetTMCLK is used in preference)
+                        bits 16, 17 => these form a 2-bit field indicating the
+                          maximum block size that is supported; this is reported
+                          to higher software layers by SDIO_ControllerFeatures 0
+                          0 => 512 bytes
+                          1 => 1024 bytes
+                          2 => 2048 bytes
+                        bit 21 => controller supports 50 MHz (SD) / 52 MHz (MMC)
+                        bits 24, 25, 26 => controller supports 3.3V, 3.0V or
+                          1.8V operation respectively (but note that
+                          GetVddCapabilities is used in preference)
+                        bit 32 => controller supports SDR50 mode
+                        bit 33 => controller supports SDR104 mode
+                        bit 34 => controller supports DDR50 mode
+uint32_t GetVddCapabilities(device *controller, uint32_t slot)
+                        function pointer to a custom routine to read which
+                        supply voltages are available. This is needed in cases
+                        where an external level-shifter is in use, which the
+                        controller itself cannot know about. If this is a null
+                        pointer, the available voltages are determined from the
+                        capabilities register instead. Generally will not be
+                        implemented for a soft controller, since it has to
+                        fabricate a capabilities register anyway. Bits in the
+                        return value are defined as follows:
+                        bit 0 set => 3.3 V supported
+                        bit 1 set => 3.0 V supported
+                        bit 2 set => 1.8 V supported
+                        other bits reserved, should be 0
+                        If you report more than one bit set, then you must also
+                        support 0 V (this is because cards must be powered down
+                        in order to change their operating voltage).
+void SetVdd(device *controller, uint32_t slot, uint32_t voltage)
+                        function pointer to a custom routine to set the supply
+                        voltage. This is needed if blocks other than the SDHCI
+                        controller are involved in power supply or level
+                        shifting; if this is not the case for an SDHCI
+                        controller, then you can use a null pointer and the
+                        SDHCI power control register will be used instead. For
+                        soft controllers, you must provide this function, even
+                        if it actually does nothing, to prevent SDIODriver from
+                        trying to access the power control register. The voltage
+                        is specified in mV, and may have value 0 to indicate that
+                        the bus should be powered down.
+void SetBusMode(device *controller, uint32_t slot, bool od_not_pp)
+                        function pointer to switch the CMD line of the bus
+                        between open-drain and push-pull modes. With the MMC bus
+                        (unlike the SD bus), multiple cards may share both a
+                        CLK and CMD line, and may all simultaneously drive
+                        the shared CMD line in response to "bcr" type commands.
+                        These commands are used during device-identification
+                        mode, so during this mode, the CMD line must be set to
+                        open-drain. Push-pull mode is used in data-transfer
+                        mode for its speed advantage. A controller that only
+                        supports SD cards may use a null pointer for this entry.
+void PostPowerOn(device *controller, uint32_t slot)
+                        function pointer which is called after power is supplied
+                        to the card. The controller in the OMAP3 has a special
+                        initialisation procedure that must be performed at this
+                        point - other cases will probably use a null pointer.
+void SetBusWidth(device_t *controller, uint32_t slot, uint32_t lines)
+                        function pointer to a custom routine to set the number
+                        of DAT lines used by the controller (1, 4 or 8); may be
+                        a null pointer if the controller conforms to the SDHCI
+                        specification. Must be implemented for soft controllers.
+uint32_t GetMaxCurrent(device *controller, uint32_t slot)
+                        function pointer to find the maximum current that can
+                        supplied to the card at the presently selected voltage
+                        and bus width. This is needed for all soft controllers,
+                        or for SDHCI controllers if there are external power
+                        supplies or voltage shifters, or if the maximum current
+                        capabilities register is not implemented or reports
+                        value 0. You may use a null pointer otherwise. The value
+                        returned is in units of mA.
+uint32_t SetSDCLK(device *controller, uint32_t slot, uint32_t freq_khz)
+                        function pointer to a custom routine set the SDCLK
+                        frequency (in units of 1 kHz) for all SDCLK lines driven
+                        by this slot. Must be implemented for all soft
+                        controllers; may be a null pointer for SDHCI controllers
+                        that conform to the SDHCI specification. A controller
+                        may set any frequency below the one requested; the
+                        function returns the actual frequency used, in kHz,
+                        rounded down.
+uint32_t GetTMCLK(device *controller, uint32_t slot)
+                        function pointer to a custom routine to read the timeout
+                        clock frequency (TMCLK) in units of 1 kHz. Must be
+                        implemented for all soft controllers; may be a null
+                        pointer for an SDHCI controller that conforms to the
+                        SDHCI specification and provides a non-zero value in the
+                        Timeout Clock Frequency field of the Capabilities
+                        register.
+void SetActivity(device *controller, uint32_t slot, uint32_t level)
+                        function pointer to turn on or off the disc activity
+                        indicator LED(s) for the specified slot on this
+                        controller (level 0 = off, level 1 = read access,
+                        level 2 = write access). Must be implemented for all
+                        soft controllers (even if it does nothing); may be a
+                        null pointer for SDHCI controllers if the standard SDHCI
+                        mechanism is to be used instead.
+bool GetCardDetect(device *controller, uint32_t slot)
+                        function pointer that returns the state of the hardware
+                        card-detect line for the card in this slot. Unused if
+                        slotinfo flag bit 6 is set.
+                        When multiple MMC devices share the same CMD line, there
+                        is no way to associate a card's bus address (RCA) with
+                        an independent card detect line, so detection is
+                        impossible and this function should return true. The SD
+                        Shared Bus configuration is only used in cases where
+                        the device is embedded and non-removable, so likewise
+                        this function should return true in such cases.
+                        If slotinfo flag bit 6 is clear, then this must be
+                        implemented for all soft controllers, as well as for
+                        any SDHCI controllers for which the standard SDHCI
+                        mechanism is not to be used instead.
+bool GetWriteProtect(device *controller, uint32_t slot)
+                        function pointer that returns whether the hardware
+                        write-protect switch is activated for this slot.
+                        Similar concerns regarding devices sharing a CMD line
+                        apply so in such cases you should always return false.
+                        For slots which don't feature a write protect switch
+                        (e.g. micro SD), always return false. Must always be
+                        implemented for soft controllers; may be a null pointer
+                        for SDHCI controllers if the standard SDHCI mechanism is
+                        to be used instead.
+void TriggerCommand(device *controller, uint32_t slot, uint16_t transfer_mode,
+                    uint16_t command)
+                        SDHCI controllers, minor version >= 1 only:
+                        function pointer that performs the equivalent of writes
+                        to the Transfer Mode and Command registers on a pure
+                        SDHCI controller, and thereby causes a command to be
+                        issued on the bus.
+size_t OpWorkspace(void)
+                        Soft controllers only:
+                        mandatory function pointer that returns the number of
+                        bytes of per-operation RAM storage required
+void SlotReset(device *controller, uint32_t slot)
+                        Soft controllers only:
+                        mandatory function pointer which initiates the reset of
+                        one specific slot of a controller
+bool PollSlotReset(device *controller, uint32_t slot)
+                        Soft controllers only:
+                        mandatory function pointer which is polled to read
+                        whether the reset of a slot has completed yet. Return
+                        true when reset has completed.
+void SetDataTimeout(device *controller, uint32_t slot, uint32_t timeout)
+                        Soft controllers only:
+                        mandatory function pointer to program the duration of
+                        the data timeout duration, in units of TMCLK. This is
+                        the time after which OpPoll should report controller
+                        error 4 (data timeout).
+void OpInit(device *controller, uint32_t slot, sdhci_op_state_t *public_op,
+            void *private_op)
+                        Soft controllers only:
+                        mandatory function pointer that is called when an
+                        operation is initially queued by SWI SDIO_Op and before
+                        it is actually started. The details of the operation are
+                        specified in public_op (see below), and the device is
+                        expected to initialise its private state variables in
+                        the block starting at private_op and whose length is
+                        determined by the number returned by OpWorkspace.
+uint32_t OpPoll(device *controller, uint32_t slot, sdhci_op_state_t *public_op,
+                void *private_op, int32_t time_now)
+                        Soft controllers only:
+                        mandatory function pointer that is called to crank the
+                        state machine for handling a given operation for a
+                        given slot. It can be assumed that the function is not
+                        called re-entrantly for a given slot, but you should be
+                        prepared for the call to be made from the background
+                        (i.e. from within an interrupt handler). Both private_op
+                        and (where applicable) public_op data members can be
+                        updated. time_now is the current value of a 10ms
+                        monotonic timer, which can be used for detecting
+                        timeouts. The function must not block for more than a
+                        few microseconds: if you need a longer wait, update your
+                        state machine and return to say the operation is still
+                        in progress. Valid return values are:
+                        -2: operation was aborted before it started (so
+                            SDIODriver doesn't need to back to its client again)
+                        -1: operation is in progress
+                        0: operation completed successfully
+                        &0D: Timeout waiting for CMD line
+                        &0E: Timeout waiting for DAT line
+                        &10: Command aborted
+                        &AF: Controller error - CMD line conflict
+                        &B0: Controller error - Response timeout
+                        &B1: Controller error - Response CRC error
+                        &B2: Controller error - Response end bit error
+                        &B3: Controller error - Response index error
+                        &B4: Controller error - Data timeout
+                        &B5: Controller error - Data CRC error
+                        &B6: Controller error - Data end bit error
+                        &B7: Controller error - Current limit error
+                        &B8: Controller error - Auto CMD error
+                        &B9: Controller error - ADMA error
+                        &BA: Controller error - Tuning error
+                        &BC: Controller error 12
+                        &C3: Device error - Key exchange sequence error
+                        &C7: Device error - Switch error
+                        &CD: Device error - Erase reset
+                        &CF: Device error - Write protect erase skip
+                        &D0: Device error - CID/CSD overwrite
+                        &D3: Device error - Generic error
+                        &D4: Device error - CC error
+                        &D5: Device error - Device ECC failed
+                        &D6: Device error - Illegal command
+                        &D7: Device error - Command CRC error
+                        &D8: Device error - Lock/unlock failed
+                        &DA: Device error - Write protect violation
+                        &DB: Device error - Invalid erase parameters
+                        &DC: Device error - Erase sequence error
+                        &DD: Device error - Block length error
+                        &DE: Device error - Address misalign
+                        &DF: Device error - Address out of range
+                        &E0: Device error - Out of range
+                        &E1: Device error - Invalid function number
+                        &E3: Device error - Generic error
+                        &E6: Device error - Illegal command
+                        &E7: Device error - Command CRC error
+bool OpAbort(device *controller, uint32_t slot, sdhci_op_state_t *public_op,
+             void *private_op)
+                        Soft controllers only:
+                        mandatory function pointer that is called to atomically
+                        abort an operation. Return true if the operation had
+                        yet to start at the point when it was aborted.
+void SetDMASpace(device *controller, uint32_t slot, void *logical_address,
+                 uint64_t physical_address)
+                        Soft controllers only:
+                        function pointer required only if GetDMASpace function
+                        pointer (q.v.) is also provided.
+size_t GetDMASpace(device *controller, uint32_t slot, size_t *alignment,
+                   size_t *boundary)
+                        Soft controllers only:
+                        optional function pointer that can be provided by the
+                        HAL device if it requires SDIODriver to allocate, on its
+                        behalf, a per-slot block of page-mapped, bufferable,
+                        privileged-mode-only read-write RAM which is safe from
+                        being dynamically remapped by the kernel. For type-2
+                        soft controllers, whether the memory is cacheable or
+                        not is determined by bit 0 of the flags field; for
+                        type-1 controllers, it is always uncached. Typically,
+                        this would be expected to contain DMA descriptors and/or
+                        buffers. The return value is the size of the block
+                        required, and the words pointed at by alignment and
+                        boundary must be filled in with the required alignment
+                        and boundary limitation requirements of the block (or 0
+                        if no such requirements apply). The resulting block is
+                        notified to the HAL device by the use of SetDMASpace,
+                        which can be assumed to have been completed on entry to
+                        Activate.
+void EnableCardInterrupt(device *controller, uint32_t slot, bool enabled)
+                        Type-2 soft controllers only:
+                        mandatory function pointer that is used to mask or
+                        unmask the DAT1 card interrupt (which is only generated
+                        by SDIO cards). For some controllers, it will be
+                        necessary to clear or acknowledge the interrupt status
+                        bit immediately prior to enabling it.
+bool CardInterruptStatus(device *controller, uint32_t slot)
+                        Type-2 soft controllers only:
+                        mandatory function pointer that is used to query whether
+                        the DAT1 card interrupt is currently pending.
+
+The structures pointed at by slotinfo have the following layout:
+flags       bits 31-9 reserved, 0
+            bit 8 set => slot doesn't support multiple-block operations limited
+                         by CMD23 (so open-ended multiple-block operations must
+                         be used instead)
+            bit 7 set => all devices on this slot are integrated onto the board
+                         and so are not physically removable, but at least one
+                         of them provides a memory function (this flag is used
+                         by SDFS to assign a "hard disc" drive number)
+            bit 6 set => the devices on this slot are removable but the card
+                         detect line is non-functional, so testing for device
+                         presence must be performed by a speculative command
+            bits 5-3 = number of SDCLK lines controlled by this slot, minus 1
+            bits 2-1 = data bus width tracked out to device(s):
+                       0 => 1 bit
+                       1 => 4 bits
+                       2 => 8 bits (MMC or embedded SD only)
+            bit 0 set => all devices on this slot are integrated onto the board
+                         and so are not physically removable, and none of them
+                         provide a memory function (this flag is used to hide
+                         integrated SDIO devices from SDFS)
+stdregs     SDHCI controllers:
+            bits 31-0 = logical base addresses of standard register set
+            Soft controllers:
+            bits 31-0 = controller private, considered opaque by SDIODriver
+
+The sdhci_op_state_t structure passed to OpInit, OpPoll and OpAbort describe
+the nature of an operation, and has the following structure:
+
+chk_r1 (1 byte)  if non-zero, interpret the bits in the command response
+                 according to R1 (memory) response rules
+chk_r5 (1 byte)  if non-zero, interpret the bits in the command response
+                 according to R5 (IO) response rules
+transfer_mode (2 bytes)
+   bits 5 and 1 set => transfer multiple blocks
+   bits 5 and 1 clear => transfer single block
+   bit 5 set, bit 1 clear => infinite transfer (currently unused by SDIODriver)
+   bit 4 set => read operation (card to host)
+   bit 2 set => issue CMD12 when the last block transfer is completed
+command (2 bytes)
+   bits 13-8 => command index
+   bits 7-6 => command type:
+     0 = normal
+     1 = suspend
+     2 = resume
+     3 = abort
+   bit 5 set => data present
+   bit 4 set => check index field in response matches command index, generate
+     controller error 3 (response index error) if not
+   bit 3 set => check CRC field in response, generate controller error 1
+     (response CRC error) if not
+   bits 1-0 => response length to expect:
+     0 = no response
+     1 = response length 136
+     2 = response length 48
+     3 = response length 48 and check Busy after response
+is_mmc (1 byte): if non-zero, interpret R1 response bits according to MMC
+                 rather than SD rules
+padding (1 byte): currently unused
+argument (4 bytes): 32-bit argument field to insert into the command waveform
+response (4 bytes): pointer to a buffer to fill in with either 4 or 15 bytes
+   of response, depending upon the expected response length. Data should be
+   written in little-endian order (i.e. the opposite to that in which it was
+   transmitted on the wire).
+block_size (2 bytes): number of bytes per block, i.e. distance between CRCs on
+   data lines
+block_count (2 bytes): number of blocks remaining in data transfer
+total_length (4 bytes): length of data transfer remaining, in bytes
+scatter_offset (4 bytes): current byte index into current block on scatter list
+list (4 bytes): pointer to current position on a FileCore-style scatter list
+   (address/length pairs, addresses above 0xFFFF0000 interpreted as byte offset
+   to apply when list wraps). Even simple transfers are converted to a scatter
+   list by SDIO_Op, so there is no need to cater for both cases here.
+
+Fields in sdhci_op_state_t up to block_size should be considered read-only by
+the device. However, fields from block_count onwards would normally be updated
+as the operation progresses.
+
+
+The OMAP3530 has 3 host controllers with one slot on each, but since the
+beagleboard only tracks out one of them to an SD connector, only this one will
+be reported by the HAL. For boards like the IGEPv2 which use 2 of the
+controllers, the HAL will instead report two devices. A driver for a beagleboard
+expansion card would announce the additional controller(s) once the expansion
+card had been detected - this is necessary since the HAL can't be expected to
+have knowledge of how to detect every possible expansion card and how they route
+their SD buses.
+
+(Actually, to simplify initial development, this device was implemented in a
+module, so that complete ROM rebuilds were not required to test each incremental
+change, but when the code became stable it was moved into the HAL proper.)
+
+
+
+High-level interface
+
+First, a note on controller and card addressing. There are a number of fields
+common to multiple parts of the API:
+
+* Bus number: this is the index of the SD host controller device, in the order
+  of discovery.
+* Slot number: this is the index of the SDCLK line for a given host controller.
+  Except for a SD Shared Bus configuration, this is the same as the index of
+  the CMD line, and maps directly on to the register set index as described by
+  the HAL. On an MMC bus, multiple cards may also share the same slot number,
+  but they are identified by a differing RCA (passed as an argument to various
+  commands) instead.
+* Unit number: this is the logical unit index within a card. A value of 0
+  refers to memory operation, values of 1-7 refer to a function index, and other
+  values are reserved.
+
+The SDIODriver is responsible for probing cards, to identify which are memory
+cards, which are IO cards and which are combo cards, and for IO cards,
+discovering the set of functions available and the Function Interface Code,
+manufacturer code and card identifier for each. However, it is not appropriate
+for it to create further HAL devices to describe functions because to do so
+would mean hard-coding knowledge of the meaning of these fields into the
+SDIODriver, and additional codes could be allocated at any time; it is better
+that this knowledge is encapsulated within the driver module for that specific
+function.
+
+SDIODriver issues a number of service calls:
+
+
+Service_SDIOSlotAttached (Service Call &81040)
+
+On entry
+R1 = &81040
+R2 bits 0-7 = slot number
+   bits 8-15 = bus number
+   bit 16 set => slot contains only non-removable IO device(s)
+   bit 17 set => slot is removable but has non-functional card detect line
+   bit 18 set => slot contains non-removable memory devices(s)
+   bit 19 set => slot doesn't support multiple-block operations limited by CMD23
+                 (so open-ended multiple-block operations must be used instead)
+
+On exit
+R1 preserved (do not claim)
+
+
+Service_SDIOSlotDetached (Service Call &81041)
+
+On entry
+R1 = &81041
+R2 bits 0-7 = slot number
+   bits 8-15 = bus number
+   bit 16 set => slot contains only non-removable IO device(s)
+   bit 17 set => slot is removable but has non-functional card detect line
+   bit 18 set => slot contains non-removable memory devices(s)
+   bit 19 set => slot doesn't support multiple-block operations limited by CMD23
+                 (so open-ended multiple-block operations must be used instead)
+
+On exit
+R1 preserved (do not claim)
+
+
+Service_SDIOUnitAttached (Service Call &81042)
+
+On entry
+R1 = &81042
+R2 bits 0-7 = slot number
+   bits 8-15 = bus number
+   bits 16-31 = relative card address (RCA)
+R3 bits 0-7 = unit number
+   bits 8-15 = function interface code (FIC) for IO, or 0 for memory
+               (1 = UART, 2 = Bluetooth Type-A etc.)
+   bit 16 set => device is write-protected
+   bit 17 set => MMC (rather than SD/SDIO) device
+   bits 18-31 reserved, 0
+R4 low word of card capacity (for memory cards) or 16-bit manufacturer code
+   (for IO cards)
+R5 high word of card capacity (for memory cards) or 16-bit card identifier
+   (for IO cards)
+
+On exit
+R1 = 0 to claim, else preserved
+
+
+Service_SDIOUnitDetached (Service Call &81043)
+
+On entry
+R1 = &81043
+R2 bits 0-7 = slot number
+   bits 8-15 = bus number
+   bits 16-31 = relative card address (RCA)
+R3 bits 0-7 = unit number
+   bits 8-15 = function interface code (FIC) for IO, or 0 for memory
+               (1 = UART, 2 = Bluetooth Type-A etc.)
+   bit 16 set => device is write-protected
+   bit 17 set => MMC (rather than SD/SDIO) device
+   bits 18-31 reserved, 0
+R4 low word of card capacity (for memory cards) or 16-bit manufacturer code
+   (for IO cards)
+R5 high word of card capacity (for memory cards) or 16-bit card identifier
+   (for IO cards)
+
+On exit
+R1 = 0 to claim, else preserved
+
+
+Service_SDIOSlotAcquired (Service Call &81044)
+
+On entry
+R1 = &81044
+R2 bits 0-7 = slot number
+   bits 8-15 = bus number
+
+On exit
+R1 preserved (do not claim)
+
+This service call is issued just after exclusive access to an SDIO slot has been
+acquired using SWI SDIO_Control.
+
+
+Service_SDIOSlotReleased (Service Call &81045)
+
+On entry
+R1 = &81045
+R2 bits 0-7 = slot number
+   bits 8-15 = bus number
+
+On exit
+R1 preserved (do not claim)
+
+This service call is issued just before exclusive access to an SDIO slot is
+released. It is particularly useful in reducing the overhead of frequently
+issued SD commands, because it enables software to determine whether anyone else
+might have changed the card state (deselected the card, set a different block
+size and so on). In the common case where this doesn't happen, it means
+a number of SD commands can be omitted, allowing increased throughput.
+
+To guard against reentrancy, the procedure that should be employed is thus:
+
+ 1) Allocate two flags, flag A to say that nobody else claimed the slot since
+    you last did, and flag B to say that you have currently claimed the slot
+ 2) Call SDIO_Control to claim the slot
+ 3) SDIO_Control returns (if this fails then stop here)
+ 4) Set B
+ 5) Issue SD commands - fewer will be needed if A is set
+ 6) Set A
+ 7) Call SDIO_Control to release the slot
+ 8) Service_SDIOSlotReleased handler is entered with B set on entry; clear B
+ 9) At this point, interrupts may happen and further instances of
+    Service_SDIOSlotReleased may occur with B now clear on entry; clear A if so
+10) SDIO_Control (from step 7) returns
+11) More instances of Service_SDIOSlotReleased may still occur with B clear on
+    entry; clear A if so
+
+This service call may have an additional benefit to enable a background process
+to be woken up if it previously found that the slot was not available. However
+you should note that the slot cannot be acquired from within the service call
+handler. Instead, you should schedule the background process to execute at a
+later time, for example using OS_CallAfter, OS_AddCallBack or the RTSupport
+module.
+
+
+Service_SDIODescribeFIC (Service Call &81046)
+
+On entry
+R0 = Function Interface Code
+R1 = &81046
+
+On exit
+R1 = 0 to claim
+R2 = pointer to zero-terminated string
+
+This service call is used to acquire a textual description of an SDIO device.
+It is used, for example, by *SDIODevices.
+
+
+Service_SDIODescribeMANF (Service Call &81047)
+
+On entry
+R0 = 16-bit SDIO card manufacturer code
+R1 = &81047
+
+On exit
+R1 = 0 to claim
+R2 = pointer to zero-terminated string
+
+This service call is used to acquire a textual description of an SDIO device's
+manufacturer code. It is used, for example, by *SDIODevices.
+
+
+The driver's main API is in the form of SWIs.
+
+
+SWI SDIO_Initialise 0 (SWI &59000)
+
+On entry
+R0 = 0 (reason code: reset bus)
+R1 bits 0-7 = bus number
+
+Not reentrant
+
+This call resets the specified host controller and rescans its slots.
+
+
+SWI SDIO_Initialise 1 (SWI &59000)
+
+On entry
+R0 = 1 (reason code: rescan slot)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+
+Not reentrant
+
+This call rescans the devices in a given slot and calculates the new optimal
+electrical configuration for the slot. This is required after locking or
+unlocking a card.
+
+
+SWI SDIO_Control 0 (SWI &59001)
+
+On entry
+R0 = 0 (reason code: acquire exclusive access to slot, non-blocking)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+
+On exit
+Error &81EE06 ("Slot in use") is returned if exclusive access cannot be acquired
+at the present time.
+
+Reentrant
+
+This call is one of a group that must be used around every call to SWI SDIO_Op.
+The reason for this is that many SD commands need to be issued in groups of two
+or more. If another SD command is queued in the middle of such a group, it may
+find that the device is not in a receptive state for that command, and the
+operation of the command group that was interrupted may also be disrupted.
+
+This version of the acquire-slot SWI is suitable for use from the background,
+but the caller must be prepared for it to fail and reschedule the command at a
+later time.
+
+
+SWI SDIO_Control 1 (SWI &59001)
+
+On entry
+R0 = 1 (reason code: acquire exclusive access to slot, blocking)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+
+Not reentrant
+
+This call is similar to SDIO_Control 0, but waits (forever if necessary) for the
+slot to become available.
+
+
+SWI SDIO_Control 2 (SWI &59001)
+
+On entry
+R0 = 2 (reason code: acquire exclusive access to slot, blocking with sleep)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+
+Not reentrant
+
+This call is similar to SDIO_Control 1, but calls OS_UpCall 6 while the slot is
+not available, in order to yield the current application.
+
+
+SWI SDIO_Control 3 (SWI &59001)
+
+On entry
+R0 = 3 (reason code: release exclusive access to slot)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+
+Reentrant
+
+This call makes the specified slot available for others to use. It should be
+used routinely as soon as a group of related SD commands has been issued, to
+avoid locking other routines out.
+
+
+SWI SDIO_Control 4 (SWI &59001)
+
+On entry
+R0 = 4 (reason code: abort all operations on slot)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+
+Reentrant
+
+This call cancels all outstanding operations on a slot. You should abort
+individual operations instead wherever possible. You should acquire exclusive
+access to the slot before making this call (otherwise the owner of the slot may
+queue new operations during this call which won't get aborted).
+
+
+SWI SDIO_Control 5 (SWI &59001)
+
+On entry
+R0 = 5 (reason code: abort operation)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+R2 = operation ID as returned by SDIO_Op for background operations
+
+Reentrant
+
+This call cancels the specified background operation.
+
+
+SWI SDIO_Control 6 (SWI &59001)
+
+On entry
+R0 = 6 (reason code: poll card detection)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+
+Reentrant
+
+With hardware that has a functional card detect line, SDIODriver polls the
+hardware at regular intervals to determine whether a card is inserted. However,
+it is possible that if you have an operation ongoing when a card is removed that
+the operation will return an error before SDIODriver does its polling and has
+chance to issue Service_SDIOUnitDetached. Therefore this SWI gives you a
+mechanism to force an extra poll (and therefore trigger any outstanding service
+calls) so you can determine whether the error was caused by the card having been
+removed.
+
+This call has no effect for hardware that has no card detect line.
+
+
+SWI SDIO_Control 7 (SWI &59001)
+
+On entry
+R0 = 7 (reason code: acknowledge SDIO card interrupt)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+
+Reentrant
+
+The SDIO card interrupt is level-sensitive, so it is masked while each
+interrupt is handled. Once the interrupt has been handled, it is necessary for
+the handler to call this SWI in order that the SDIO card interrupt can be
+unmasked again, ready for the next interrupt.
+
+
+SWI SDIO_Enumerate 0 (SWI &59002)
+
+On entry
+R0 = 0 (reason code: enumerate slots)
+R1 = 0 on first call, or preserved on subsequent calls
+
+On exit
+R0 preserved
+R1 = 0 if no more slots (R2 is not valid in this case), else the value to pass
+     in R1 to next call
+R2  bits 0-7 = slot number
+    bits 8-15 = bus number
+    bit 16 set => slot contains only non-removable IO device(s)
+    bit 17 set => slot is removable but has non-functional card detect line
+    bit 18 set => slot contains non-removable memory devices(s)
+    bit 19 set => slot doesn't support multiple-block operations limited by
+                  CMD23 (so open-ended multiple-block operations must be used
+                  instead)
+
+Reentrant
+
+This call enables the caller to discover which slots are available.
+
+
+SWI SDIO_Enumerate 1 (SWI &59002)
+
+On entry
+R0 = 1 (reason code: enumerate units)
+R1 = 0 on first call, or preserved on subsequent calls
+R2  bits 0-7 = slot number
+    bits 8-15 = bus number
+    bits 16-31 ignored
+
+On exit
+R0 preserved
+R1 = 0 if no more units (R2 and R3 are not valid in this case), else the value
+     to pass in R1 to next call
+R2 bits 0-7 = slot number
+   bits 8-15 = bus number
+   bits 16-31 = relative card address (RCA)
+R3 bits 0-7 = unit number
+   bits 8-15 = function interface code (FIC) for IO, or 0 for memory
+               (1 = UART, 2 = Bluetooth Type-A etc.)
+   bit 16 set => device is write-protected
+   bit 17 set => MMC (rather than SD/SDIO) device
+   bits 18-31 reserved, 0
+R4 low word of card capacity (for memory cards) or 16-bit manufacturer code
+   (for IO cards)
+R5 high word of card capacity (for memory cards) or 16-bit card identifier
+   (for IO cards)
+
+Not reentrant
+
+This call enables the caller to discover the memory cards and IO functions
+available in a given slot.
+
+
+SWI SDIO_ControllerFeatures (SWI &59003)
+
+On entry
+R0 = feature number:
+     index meaning
+     0     log2 of maximum block length supported for data transfers
+     1     maximum recommended number of blocks per operation
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+
+On exit
+R2 = value corresponding to the requested feature
+
+Reentrant
+
+This call enables the caller to discover features of the SD controller. An
+error is generated for unknown feature index values.
+
+
+SWI SDIO_ReadRegister (SWI &59004)
+
+On entry
+R0 = register number:
+     index meaning
+     0     wired AND of memory OCR register(s) for slot (4 bytes)
+     1     IO OCR register (4 bytes)
+     2     CID register (15 bytes excluding CRC byte)
+     3     CSD register (15 bytes excluding CRC byte)
+     4     SCR register (8 bytes)
+R1  bits 0-7 = slot number
+    bits 8-15 = bus number
+    bits 16-31 = RCA
+R2 = pointer to buffer (assumed large enough for the register selected)
+
+On exit
+All registers preserved.
+Buffer is filled in with register contents, stored in little-endian order
+
+Not reentrant
+
+The SDIODriver reads and caches certain registers as part of the process of
+scanning each slot. This SWI makes available for the convenience of other
+modules. An error is generated for unknown register index values, or if the
+specified card does not provide the specified register.
+
+
+SWI SDIO_Op (SWI &59005)
+
+On entry
+R0  bits 0-7 = slot number
+    bits 8-15 = bus number
+    bit 16 set => check busy after response (use for R1B)
+    bit 17 set => command CRC check enabled (use for R1, R1B, R2, R4 (MMC),
+                  R5 (MMC), R5 (SDIO), R6, R7)
+    bit 18 set => command index check enabled (use for R1, R1B, R4 (MMC),
+                  R5 (MMC), R5 (SDIO), R6, R7)
+    bit 19 set => test response word for R1-style errors (use for R1, R1B)
+    bit 20 set => test response word for R5-style errors (use for R5 (SDIO))
+    bits 24-25 = transfer direction (0 = no data transfer, 1 = read, 2 = write)
+    bit 26 set => scatter transfer
+    bit 27 set => don't poll for escape during foreground transfers
+    (bit 28 reserved - bits 26-29 are equivalent to bits 5-8 for FileCore DiscOps)
+    bit 29 set => background transfer
+R1 = length of command and response block, must be 8, 12 or 23
+R2 = pointer to command and response block:
+     R2+0  command index
+     R2+1  flags: bit 0 set => this is an application command (i.e. precede this
+                    command with a CMD55)
+                  bit 1 set => issue automatic CMD12 to terminate multiple-
+                    block data transfer command
+                  bits 4-7 = log2 of the data transfer block split size
+                    (block length used is the lesser of R4 and this number)
+                  other bits reserved, should be 0
+     R2+2  RCA (relative card address) for application commands, otherwise 0
+     R2+4  bits 8-39 of the command argument
+     R2+8  buffer space filled in on exit with the response bytes (if any)
+           excluding the index and CRC bytes
+     For most commands, the space required at R2+8 will be 4 bytes, but for R2
+     it will be 15 bytes, and a few commands (such as GO_IDLE_STATE) have no
+     response at all.
+R3 = RAM ptr for start of transfer or pointer to scatter list of address length
+     pairs if bit 26 of R0 is set.
+R4 = length of transfer (in bytes) - must be 0 if no data transfer is specified
+     in R0 bits 24-25, and must not be 0 otherwise
+R5 = if bit 29 of R0 is clear, this is timeout in centiseconds or 0 for
+     no timeout
+     if bit 29 of R0 is set, this is the value to pass in R5 to the callback
+     routine
+R6 = address of callback routine, if bit 26 of R0 is set
+R7 = value to pass in R12 to the callback routine, if bit 26 of R0 is set
+
+On exit
+If error was detected,
+  R0 -> error block
+  R4 updated to number of bytes not transferred
+  V set
+If foreground transfer completed successfully,
+  R0 = 0 (consider as a flags word with all bits reserved)
+  R4 = 0
+  V clear
+If background transfer has started,
+  R0 = 0 (consider as a flags word with all bits reserved)
+  R1 = operation handle, can be used to cancel the operation using SDIO_Control
+  V clear
+
+Reentrant when used to specify a background transfer, otherwise not reentrant.
+
+The scatter list is not updated (in other words, it behaves more like the
+low-level SCSISwitch API than the backward-compatible SCSIDriver API).
+FileCore-style wrapping is accepted (ie if an address entry is between &FFFF0000
+and &FFFFFFFF, and the length field is 0, then that should be treated as an
+instruction to push the scatter list pointer backwards by an offset of up to
+64K).
+
+The callback operates as follows:
+    The call is made in privileged mode. IRQs may be enabled or disabled.
+    If the operation completed, V is clear & R0 is set to 0.
+    If an error occurred, V is set and R0 is an error pointer.
+    R4 holds the amount of data not transferred.
+    R5 and R12 are set to the values passed in.
+    All registers will be preserved.
+
+
+SWI SDIO_ClaimDeviceVector (SWI &59006)
+
+On entry
+R0  bits 0-7 = unit number
+    bits 8-15 = slot number
+    bits 16-23 = bus number
+R1 = address of interrupt handler routine
+R2 = value to pass in R12 to routine
+
+Reentrant
+
+This call is analogous to OS_ClaimDeviceVector, but for interrupts signalled
+via the DAT1 pin of an SD bus (or specifically, except when the bus is in
+1-bit mode, they are signalled on DAT1 during the so-called interrupt period -
+a time when the pin is not required for use in data transfer).
+
+You must not use OS_ClaimDeviceVector yourself, since the main SD controller
+interrupt is also used for managing the progress of bus operations. Instead,
+SDIODriver takes care of detecting when the controller interrupt is acting as a
+proxy for the card interrupt, and if so, which function within an SDIO card was
+responsible for each interrupt. SDIODriver dispatches the approriate interrupt
+handler routine, according to the specification registered with it via this SWI.
+
+The interrupt handler routine will normally be called from interrupt context
+(i.e. in the background) and so it may only call re-entrant SWIs (which excludes
+anything that blocks). Exclusive access to the slot is likely to be achievable
+without retries, at least on a uniprocessor system, but to anticipate an SMP
+environment, you should code defensively and anticipate that it might take time.
+Similarly, the SDIO card is probably in Command State, but you should assume
+that you might need to issue CMD7 prior to CMD52 or CMD53.
+
+Since the DAT1 interrupt is level-sensitive, once it has triggered, it needs to
+be masked until the source of the interrupt is acknowledged. SDIODriver takes
+care of masking the interrupt as soon as it is generated, but method by which
+the source is acknowledged varies from function to function, and so is the
+responsibility of the routine registered by this call. Once this acknowledgment
+has been performed, it must call SDIO_Control 7 to inform SDIODriver that it
+can unmask the DAT1 interrupt again. This call may be made prior to the handler
+routine returning, but will more usually be made at a later time, from an
+operation-complete callback, from TickerV, or some other interrupt-context
+routine.
+
+
+SWI SDIO_ReleaseDeviceVector (SWI &59007)
+
+On entry
+R0  bits 0-7 = unit number
+    bits 8-15 = slot number
+    bits 16-23 = bus number
+R1 = address of interrupt handler routine
+R2 = value to pass in R12 to routine
+
+Reentrant
+
+This call removes an interrupt handler previously registered using
+SDIO_ClaimDeviceVector.
+
+
+SWI SDIO_Status 0 (SWI &59008)
+
+On entry
+R0 = 0 (reason code: read currently-selected RCA)
+R1  bits 0-7 = unit number (ignored)
+    bits 8-15 = slot number
+    bits 16-23 = bus number
+
+On exit
+R0 = RCA of selected card, or 0 if none
+
+Reentrant
+
+Each device on an MMC or SD bus has its own current state, but only one may be
+selected at once (i.e. Transfer "tran" State for memory cards, or Command State
+for IO cards). Any other cards must be in Standby (or Disconnect) State. It is
+also possible that all cards are simultaneously in Standby (or Disconnect)
+State, so none of them are selected.
+
+This call may be used to determine which card is currently selected. This makes
+it possible to reduce the frequency of issuing of select/deselect CMD7
+operations.
+
+
+SWI SDIO_Status 1 (SWI &59008)
+
+On entry
+R0 = 1 (reason code: read maximum block length for IO transfers)
+R1  bits 0-7 = unit number, or 0 for CIA
+    bits 8-15 = slot number
+    bits 16-23 = bus number
+
+On exit
+R0 = maximum block length in bytes, or 0 if information not available
+
+Reentrant
+
+Each SDIO function reports its maximum supported block size in the tuple
+CISTPL_FUNCE within its Card Information Structure. SDIODriver caches this
+information during bus probe, and makes it available via this SWI.
+
+While SDIODriver usually defines unit 0 to refer to memory operations, in
+the case of this SWI, we use 0 to refer to the Common I/O Area (CIA), which is
+also known as function 0.
+
+The maximum block length also specifies the limit to the number of bytes that
+may be transferred in non-block mode.
+
+
+*SDIODevices
+
+This command prints out a table of information about the currently known SDIO
+devices. Typical output might look like the following:
+
+Bus Slt  RCA Fun  Description        Capacity     Vendor    Product Rev Date
+  0   0  0002  0  MMC card             32 Mbytes  Unknown   MMC     0.0 1997-12
+  0   0  0003  0  MMC card              1 Gbytes  Unknown   001-GB  1.5 2005-06
+  1   0  0001  0  SDXC card           128 Gbytes  SanDisk   SD128   2.1 2006-04
+  2   0  1234  0  SDHC card             4 Gbytes  Panasonic SD04G   1.0 2010-08
+  2   0  1234  1  SDIO camera                     Hitachi   1234
+  3   0  5678  1  SDIO UART                       Freescale 5678
+  3   1  9ABC  1  SDIO Bluetooth Type-A           Raytheon  0007
+  3   2  DEF0  1  SDIO unknown FIC (10)           Texas Ins 5555
+  3   2  DEF0  2  SDIO unknown FIC (FF)           Texas Ins AAAA
+
+
+*SDIOSlots
+
+This command prints out a table of information about the current configuration
+of each SDIO slot. Typical output might look like the following:
+
+Bus Slt  Voltage  Width  Frequency
+  0   0   1.8 V   8-bit   52 MHz DDR
+  1   0   1.8 V   4-bit  208 MHz SDR
+  2   0   3.0 V   4-bit   50 MHZ SDR
+  3   0   1.8 V   1-bit   25 MHz SDR
+  3   1   1.8 V   1-bit   25 MHz SDR
+  3   2   3.3 V   1-bit   25 MHz SDR

@@ -1,0 +1,65 @@
+REM
+REM CDDL HEADER START
+REM
+REM The contents of this file are subject to the terms of the
+REM Common Development and Distribution License (the "Licence").
+REM You may not use this file except in compliance with the Licence.
+REM
+REM You can obtain a copy of the licence at
+REM RiscOS/Sources/HWSupport/SD/SDIODriver/LICENCE.
+REM See the Licence for the specific language governing permissions
+REM and limitations under the Licence.
+REM
+REM When distributing Covered Code, include this CDDL HEADER in each
+REM file and include the Licence file. If applicable, add the
+REM following below this CDDL HEADER, with the fields enclosed by
+REM brackets "[]" replaced with your own identifying information:
+REM Portions Copyright [yyyy] [name of copyright owner]
+REM
+REM CDDL HEADER END
+REM
+REM Copyright 2021 RISC OS Developments Ltd.  All rights reserved.
+REM Use is subject to license terms.
+REM
+ON ERROR ON ERROR OFF:REPORT:PRINT;" at line ";ERL:END
+PRINT "Multi-block op test"
+INPUT "Bus? "bus%
+INPUT "Slot? "slot%
+SYS"SDIO_Enumerate",1,,(bus%<<8)+slot% TO ,,r2%
+rca%=r2%>>>16
+PRINT '"RCA is &";RIGHT$("000"+STR$~rca%,4)
+
+DIM buf% 512*65536
+DIM blk1% 12, blk2% 12
+blk1%!0=23
+blk2%!0=(9<<12)+18
+blk2%!4=0
+
+PROCselect
+ON ERROR ON ERROR OFF:PROCdeselect:REPORT:PRINT;" at line ";ERL:END
+
+REPEAT
+
+INPUT "Number of sectors to read? "count%
+blk1%!4=count%
+SYS"SDIO_Op",&E0000+(bus%<<8)+slot%,12,blk1%,,,100
+SYS"SDIO_Op",&10E0000+(bus%<<8)+slot%,12,blk2%,buf%,512*count%,100
+
+UNTIL FALSE
+END
+
+DEF PROCselect
+LOCAL blk%
+DIM blk% LOCAL 12
+blk%!0=7
+blk%!4=rca%<<16
+SYS"SDIO_Op",&E0000+(bus%<<8)+slot%,12,blk%,,,100
+ENDPROC
+
+DEF PROCdeselect
+LOCAL blk%
+DIM blk% LOCAL 8
+blk%!0=7
+blk%!4=0
+SYS"SDIO_Op",(bus%<<8)+slot%,8,blk%,,,100
+ENDPROC

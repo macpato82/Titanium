@@ -1,0 +1,221 @@
+# Messages file for !Help
+_TaskName:Help
+_Version:3.27 (04-Nov-20)
+
+# Standard miscellaneous messages
+reportt:Message from Help
+
+# Help messages
+HelpH3:\T%0 icon.
+HelpI2:\TBACK icon.|M\Smove the \w to the bottom of the pile of \ws.
+HelpI3:\TCLOSE icon.|M\Sclose the \w.
+HelpI4:\TTitle bar.|M\Sbring the \w to the top.|M
+HelpI4a:\Dmove the \w around the desktop.|M
+HelpI4b:\dmove the \w without affecting the order of \ws.
+HelpI5:\TTOGGLE SIZE icon.|M
+HelpI5a:\Stoggle the \w size between full size and the last size displayed.
+HelpI6:\Sscroll the \w up.
+HelpI7:\Tvertical scroll bar.
+HelpI8:\Sscroll the \w down.
+HelpI9:\T\a SIZE icon.|M\Dalter the size and shape of the \w.
+HelpI10:\Sscroll the \w left.
+HelpI11:\Thorizontal scroll bar.
+HelpI12:\Sscroll the \w right.
+HelpI13:\Tedge of the \w.
+HelpI14:\TICONISE icon.|M\Siconise the \w.
+
+# Error messages
+Error1:Bad inversion
+Error2:Illegal character
+Error3:Bad interactive option
+Error4:Insufficient memory to display help message
+Fatal1:Bad substitution in message
+Fatal2:Help has suffered a fatal error and must exit immediately
+
+# Tokens - note trailing spaces:
+TS:Click SELECT to 
+TR:Move the pointer right to 
+TA:Click ADJUST to 
+TT:This is the 
+TG:This option is greyed out because 
+TW:This window is 
+TD:Drag SELECT to 
+Td:Drag ADJUST to 
+Tw:window
+Ts:SELECT
+Ta:ADJUST
+T0:Either drag  from the file icon to a directory display, or fill in the name of a file and click  on OK, to sav
+T1:Double-click 
+T2:allows you to 
+T3:path
+T4:To paint each 
+T5:ent
+T6:press Return
+T7:The Force option determines whether or not locked objects will be deleted.
+T8:This line shows that 
+T9:currently selected 
+T@: the 
+TB:select
+TC:lick  
+TE: to 
+TF: this 
+TH:This option is shaded because
+TI: the disc in drive 
+TJ:directory
+TK:current
+TL:sprite
+TM:tion
+TN:change
+TO:Click  (or press 
+TP:display
+TQ: and 
+TU: object
+TV:This 
+TX: information about
+TY: of the 
+TZ:file
+T^:colour
+T_:number of 
+Tb:enable or disable this option.
+Tc:application
+Te:alarm
+Tf: a 
+Tg: in
+Th:character
+Ti:This option is shaded because you must use a utility program to format the 
+Tj:or 
+Tk: with
+Tl:Move the pointer right
+Tm:selected
+Tn: operation
+To: this sprite, at the position you were pointing at when you pressed MENU.
+Tp:determine the free space on
+Tq:ing
+Tr:icon
+Tt:change the 
+Tu:control
+Tv:disc
+Tx:back up the disc in drive 
+Ty:e the 
+Tz: at which the alarm will go off.
+TÄ:drive
+TÅ: of 
+TÇ: in the 
+TÉ: from
+TÑ: file server
+TÖ: for triangles (in multiples of the path width).
+TÜ:display the root directory
+Tá:ed 
+Tà: mode
+Tâ: you 
+Tä:point
+Tã:t the 
+Tå:open
+Tç:Type a number and 
+Té:path element
+Tè: the general public
+Tê:available
+Të:text line
+Tí: to the 
+Tì:Click here or type 
+Tî:set the recurrence interval to 
+Tï: a save box
+Tñ:forma
+Tó:shows the 
+Tô:name
+Tö:SELECT to 
+Tõ:share this disc, without the protected option.
+Tú:icons on the pinboard.
+Tù:determine whether or no
+Tû:horizontal
+Tü: is 
+T†: for the 
+T°:share this disc, with the protected option.
+T¢: a new 
+T£:distance between major grid points
+T§:rectangle
+T•:ress 
+T¶:er the 
+Tß:This option is shaded because you can't share the disc at present.
+T©:all
+T™:To paint each ellipse, click  at its centre, at a point that gives the width at the centre, and at a point on the edge.
+T´:paint 
+T¨:sort the items in this directory by their 
+T≠: which
+TÆ: will 
+TØ: resolution (in dots per inch)
+T∞:Either fill in the numerator and denominator, or click  on the arrows, to use the given zoom factor.
+T±:format of the disc currently in the drive.
+T≤:crease the 
+T≥:: click on a preselected common value, or type in any value in the bottom field and press RETURN.
+T¥:ing 
+Tµ:Click  for 
+T∂:selection
+T∑:background 
+Tπ:change the number of minor grid points per major grid point.
+T∫:removable disc
+Tª:selected objects
+Tº: or 
+TΩ:This option is shaded because you can't back up a hard disc directly.
+Tæ:click  at the circle centre, and at the start and end of the 
+Tø:hen 
+T¿:window
+T¡: con
+T¬:These radio buttons control the 
+T√:board
+Tƒ: number
+T≈:memory
+T∆:choos
+T«:n the 
+T…:er 
+T :select the required 
+TÀ:create
+TÃ:drawing
+TÕ:type
+TŒ: the current colour with the colour found when plotted.
+Tœ: this sprite
+T–:s
+T—:line
+T“:size (height and width) used for text lines
+T”:This  
+T‘:vertically
+T’: entry mode
+T÷:defer by a number of 
+T◊:TinyDirs
+TŸ:select how to share this disc.
+T⁄:copy the 
+T€:grid
+T‹:toggle the presence
+T›:Enter the new disc name and press Return.
+Tﬁ:width of the worknamea of an Edit , in terms of system font characters.
+Tﬂ:This is
+T‡: into
+T·:desktop
+T‚:text
+T„:Double-click  
+T‰:RETURN
+TÂ:format a disc in a non-Acorn format
+TÊ:open the 
+TÁ:mak
+TÈ:here
+TÍ:screen
+TÎ:string
+TÏ:To paint each rectangle, click  at two opposite corners of the rectangle within the sprite .
+TÌ:alter the 
+TÓ:stop sharing this disc.
+TÔ:default
+T:delet
+TÒ: alarm.
+TÚ: icon.
+TÛ: from the 
+TÙ: contents
+Tı:search
+Tˆ: eg. [abc] is the set of all lower case a's b's and c's
+T˜:To paint each circle, click  at its centre and then at a point on the edge.
+T˘: for 
+T˙: settings
+T˚:dismoun
+T¸:Move the pointer right (or press 
+T˝: you wan
+T˛:start in
+Tˇ:lick 

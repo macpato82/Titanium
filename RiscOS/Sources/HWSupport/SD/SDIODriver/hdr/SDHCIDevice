@@ -1,0 +1,218 @@
+;
+; CDDL HEADER START
+;
+; The contents of this file are subject to the terms of the
+; Common Development and Distribution License (the "Licence").
+; You may not use this file except in compliance with the Licence.
+;
+; You can obtain a copy of the licence at
+; cddl/RiscOS/Sources/HWSupport/SD/SDIODriver/LICENCE.
+; See the Licence for the specific language governing permissions
+; and limitations under the Licence.
+;
+; When distributing Covered Code, include this CDDL HEADER in each
+; file and include the Licence file. If applicable, add the
+; following below this CDDL HEADER, with the fields enclosed by
+; brackets "[]" replaced with your own identifying information:
+; Portions Copyright [yyyy] [name of copyright owner]
+;
+; CDDL HEADER END
+;
+; Copyright 2012 Ben Avison.  All rights reserved.
+; Portions Copyright 2019 John Ballance.
+; Use is subject to license terms.
+;
+
+        SUBT    SDHCI HAL device constants
+
+OldOpt  SETA    {OPT}
+        OPT     OptNoList+OptNoP1List
+
+; Layout of device
+                                        ^       HALDeviceSize
+HALDevice_SDHCIFlags                    #       4
+HALDevice_SDHCISlots                    #       4
+HALDevice_SDHCISlotInfo                 #       4
+HALDevice_SDHCIWriteRegister            #       4
+HALDevice_SDHCIGetCapabilities          #       4
+HALDevice_SDHCIGetVddCapabilities       #       4
+HALDevice_SDHCISetVdd                   #       4
+HALDevice_SDHCISetBusMode               #       4
+HALDevice_SDHCIPostPowerOn              #       4
+HALDevice_SDHCISetBusWidth              #       4
+HALDevice_SDHCIGetMaxCurrent            #       4
+HALDevice_SDHCISetSDCLK                 #       4
+HALDevice_SDHCIGetTMCLK                 #       4
+HALDevice_SDHCISetActivity              #       4
+HALDevice_SDHCIGetCardDetect            #       4
+HALDevice_SDHCIGetWriteProtect          #       4
+HALDevice_SDHCISize_Common              *       :INDEX: @
+
+; Device extension for original devices (that at least vaguely follow the
+; standard SDHCI register set)
+                                        ^       HALDevice_SDHCISize_Common
+HALDevice_SDHCITriggerCommand           #       4
+HALDevice_SDHCISize                     *       :INDEX: @
+
+; Device extension for soft devices
+                                        ^       HALDevice_SDHCISize_Common
+HALDevice_SDHCIOpWorkspace              #       4
+HALDevice_SDHCISlotReset                #       4
+HALDevice_SDHCIPollSlotReset            #       4
+HALDevice_SDHCISetDataTimeout           #       4
+HALDevice_SDHCIOpInit                   #       4
+HALDevice_SDHCIOpPoll                   #       4
+HALDevice_SDHCIOpAbort                  #       4
+HALDevice_SDHCISetDMASpace              #       4
+HALDevice_SDHCIGetDMASpace              #       4
+HALDevice_SDHCIEnableCardInterrupt      #       4
+HALDevice_SDHCICardInterruptStatus      #       4
+HALDevice_SDHCISize_Soft                *       :INDEX: @
+
+; Version identifiers
+; The specification for HAL devices says:
+;   "[The version] consists of a major version number (bits 31-16) and a minor
+;   version number (bits 15-0). A change in major version number indicates an
+;   incompatible change of API. An increase in the minor version number
+;   indicates backwards-compatible extensions to the API (eg extra functions)."
+; The implication is that any given generation of a device driver must not
+; attempt to drive a device of any /major/ version it does not recognise, but
+; subject thereto, if it knows how to drive a /minor/ version x, and the device
+; reports minor version y where y >= x, then they should work together
+; correctly, if perhaps not optimally. Another way of putting this is that
+; a new minor version is appropriate if the device offers additional
+; /capabilities/ to the device driver, but not if it places additional
+; /requirements/ on it: thus the "eg extra functions" clause is not a
+; sufficient criterion in itself. In light of this, the "HasTrigger"
+; extension should in retrospect have been assigned a new major version
+; instead, but we are now stuck with this anomaly.
+                                        ^       0
+HALDeviceSDHCI_MajorVersion_Original    #       &10000  ; 0
+HALDeviceSDHCI_MajorVersion_Soft        #       &10000  ; 1
+HALDeviceSDHCI_MajorVersion_Soft2       #       &10000  ; 2
+; Minor versions for MajorVersion_Original
+                                                ^       0
+HALDeviceSDHCI_MinorVersion_Original            #       1       ; 0
+HALDeviceSDHCI_MinorVersion_OriginalHasTrigger  #       1       ; 1
+HALDeviceSDHCI_MinorVersion_OriginalValidDevNo  #       1       ; 2
+HALDeviceSDHCI_MinorVersion_HasTrigger          *       HALDeviceSDHCI_MinorVersion_OriginalHasTrigger ; backward-compatible name
+; Minor versions for MajorVersion_Soft
+                                                ^       0
+HALDeviceSDHCI_MinorVersion_Soft                #       1       ; 0
+HALDeviceSDHCI_MinorVersion_SoftValidDevNo      #       1       ; 1
+; Minor versions for MajorVersion_Soft2
+                                                ^       0
+HALDeviceSDHCI_MinorVersion_Soft2               #       1       ; 0
+
+; Flag bits for the SDHCI controller HAL device
+; The following are defined for original devices
+
+HALDeviceSDHCI_Flag_32bit       *       1 :SHL: 0
+HALDeviceSDHCI_Flag_R2bug       *       1 :SHL: 1
+HALDeviceSDHCI_Flag_ErrIRQbug   *       1 :SHL: 2
+
+; Bits 0-7 are reserved for the internal use of the HAL device for soft devices
+HALDeviceSDHCI_Flag_Soft_Opaque *       &FF :SHL: 0
+
+; The following are defined for type-2 soft devices
+
+HALDeviceSDHCI_Flag_Soft2_CacheableDMA  *       1 :SHL: 0
+HALDeviceSDHCI_Flag_Soft2_VFP           *       1 :SHL: 1
+
+; Remaining flags apply to all devices
+HALDeviceSDHCI_Flag_BlockCountLimitShift *      8
+HALDeviceSDHCI_Flag_BlockCountLimitMask *       &F :SHL: HALDeviceSDHCI_Flag_BlockCountLimitShift
+HALDeviceSDHCI_Flag_50kHzIdentification *       1 :SHL: 12
+
+; Layout of SDHCI slot info block
+                                        ^       0
+HALDeviceSDHCI_SlotInfo_Flags           #       4
+HALDeviceSDHCI_SlotInfo_StdRegs         #       4
+HALDeviceSDHCI_SlotInfo_Size            *       :INDEX: @
+
+; Flag bits for the slot info block
+
+HALDeviceSDHCI_SlotFlag_Integrated      *       1 :SHL: 0
+HALDeviceSDHCI_SlotFlag_BusShift        *       1
+HALDeviceSDHCI_SlotFlag_Bus1Bit         *       0 :SHL: HALDeviceSDHCI_SlotFlag_BusShift
+HALDeviceSDHCI_SlotFlag_Bus4Bit         *       1 :SHL: HALDeviceSDHCI_SlotFlag_BusShift
+HALDeviceSDHCI_SlotFlag_Bus8Bit         *       2 :SHL: HALDeviceSDHCI_SlotFlag_BusShift
+HALDeviceSDHCI_SlotFlag_BusMask         *       3 :SHL: HALDeviceSDHCI_SlotFlag_BusShift
+HALDeviceSDHCI_SlotFlag_ClocksShift     *       3
+HALDeviceSDHCI_SlotFlag_ClocksMask      *       &7 :SHL: HALDeviceSDHCI_SlotFlag_ClocksShift
+HALDeviceSDHCI_SlotFlag_NoCardDetect    *       1 :SHL: 6
+HALDeviceSDHCI_SlotFlag_IntegratedMem   *       1 :SHL: 7
+HALDeviceSDHCI_SlotFlag_BrokenCMD23     *       1 :SHL: 8
+
+; Values for the SetActivity entry
+                                ^       0
+HALDeviceSDHCI_ActivityOff      #       1
+HALDeviceSDHCI_ActivityRead     #       1
+HALDeviceSDHCI_ActivityWrite    #       1
+
+; Data structure for exchanging state variables with OpPoll entry
+                                ^       0
+; Items that are read-only for the HAL device
+HALDeviceSDHCI_ChkR1            #       1 ; generate errors from R1 (memory) response
+HALDeviceSDHCI_ChkR5            #       1 ; generate errors from R5 (IO) response
+HALDeviceSDHCI_TransferMode     #       2 ; value to program into the transfer_mode register
+HALDeviceSDHCI_Command          #       2 ; value to program into the command register
+HALDeviceSDHCI_IsMMC            #       1 ; treat R1 responses according to MMC rules
+                                #       1
+HALDeviceSDHCI_Argument         #       4 ; value to program into the argument register
+HALDeviceSDHCI_Response         #       4 ; pointer to response buffer
+HALDeviceSDHCI_BlockSize        #       2 ; number of bytes transferred on data lines between CRCs
+; Items that are read-write for the HAL device
+HALDeviceSDHCI_BlockCount       #       2 ; number of blocks remaining in data transfer
+HALDeviceSDHCI_TotalLength      #       4 ; length of data transfer remaining, bytes
+HALDeviceSDHCI_ScatterOffset    #       4 ; current byte index into current block on scatter list
+HALDeviceSDHCI_List             #       4 ; current block in scatter list for data transfer
+
+; Return codes for OpPoll entry.
+; Values > 0 deliberately closely follow SDIODriver error block. Make sure any
+; additional ones are also allocated a matching error number.
+
+HALDeviceSDHCI_StatusEarlyAbort *       -2  ; Operation was aborted before it started
+HALDeviceSDHCI_StatusBusy       *       -1  ; Operation is in progress
+HALDeviceSDHCI_StatusOK         *       0   ; Operation completed without error
+HALDeviceSDHCI_StatusCMDTO      *       &0D ; Timeout waiting for CMD line
+HALDeviceSDHCI_StatusDATTO      *       &0E ; Timeout waiting for DAT line
+HALDeviceSDHCI_StatusAbort      *       &10 ; Command aborted
+HALDeviceSDHCI_StatusConflict   *       &AF ; Controller error - CMD line conflict
+HALDeviceSDHCI_StatusCTO        *       &B0 ; Controller error - Response timeout
+HALDeviceSDHCI_StatusCCRC       *       &B1 ; Controller error - Response CRC error
+HALDeviceSDHCI_StatusCEB        *       &B2 ; Controller error - Response end bit error
+HALDeviceSDHCI_StatusCIE        *       &B3 ; Controller error - Response index error
+HALDeviceSDHCI_StatusDTO        *       &B4 ; Controller error - Data timeout
+HALDeviceSDHCI_StatusDCRC       *       &B5 ; Controller error - Data CRC error
+HALDeviceSDHCI_StatusDEB        *       &B6 ; Controller error - Data end bit error
+HALDeviceSDHCI_StatusCLE        *       &B7 ; Controller error - Current limit error
+HALDeviceSDHCI_StatusACE        *       &B8 ; Controller error - Auto CMD error
+HALDeviceSDHCI_StatusADE        *       &B9 ; Controller error - ADMA error
+HALDeviceSDHCI_StatusTE         *       &BA ; Controller error - Tuning error
+HALDeviceSDHCI_StatusC12        *       &BC ; Controller error 12
+HALDeviceSDHCI_StatusDevE03     *       &C7 ; Device error - Key exchange sequence error
+HALDeviceSDHCI_StatusDevE07     *       &C7 ; Device error - Switch error
+HALDeviceSDHCI_StatusDevE13     *       &CD ; Device error - Erase reset
+HALDeviceSDHCI_StatusDevE15     *       &CF ; Device error - Write protect erase skip
+HALDeviceSDHCI_StatusDevE16     *       &D0 ; Device error - CID/CSD overwrite
+HALDeviceSDHCI_StatusDevE19     *       &D3 ; Device error - Generic error
+HALDeviceSDHCI_StatusDevE20     *       &D4 ; Device error - CC error
+HALDeviceSDHCI_StatusDevE21     *       &D5 ; Device error - Device ECC failed
+HALDeviceSDHCI_StatusDevE22     *       &D6 ; Device error - Illegal command
+HALDeviceSDHCI_StatusDevE23     *       &D7 ; Device error - Command CRC error
+HALDeviceSDHCI_StatusDevE24     *       &D8 ; Device error - Lock/unlock failed
+HALDeviceSDHCI_StatusDevE26     *       &DA ; Device error - Write protect violation
+HALDeviceSDHCI_StatusDevE27     *       &DB ; Device error - Invalid erase parameters
+HALDeviceSDHCI_StatusDevE28     *       &DC ; Device error - Erase sequence error
+HALDeviceSDHCI_StatusDevE29     *       &DD ; Device error - Block length error
+HALDeviceSDHCI_StatusDevE30     *       &DE ; Device error - Address misalign
+HALDeviceSDHCI_StatusDevE31     *       &DF ; Device error - Address out of range
+HALDeviceSDHCI_StatusIODevE00   *       &E0 ; Device error - Out of range
+HALDeviceSDHCI_StatusIODevE01   *       &E1 ; Device error - Invalid function number
+HALDeviceSDHCI_StatusIODevE03   *       &E3 ; Device error - Generic error
+HALDeviceSDHCI_StatusIODevE06   *       &E6 ; Device error - Illegal command
+HALDeviceSDHCI_StatusIODevE07   *       &E7 ; Device error - Command CRC error
+
+        OPT     OldOpt
+        END

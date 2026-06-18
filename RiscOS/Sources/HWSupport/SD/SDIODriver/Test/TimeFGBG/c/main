@@ -1,0 +1,96 @@
+/*
+ * CDDL HEADER START
+ *
+ * The contents of this file are subject to the terms of the
+ * Common Development and Distribution License (the "Licence").
+ * You may not use this file except in compliance with the Licence.
+ *
+ * You can obtain a copy of the licence at
+ * cddl/RiscOS/Sources/HWSupport/SD/SDIODriver/LICENCE.
+ * See the Licence for the specific language governing permissions
+ * and limitations under the Licence.
+ *
+ * When distributing Covered Code, include this CDDL HEADER in each
+ * file and include the Licence file. If applicable, add the
+ * following below this CDDL HEADER, with the fields enclosed by
+ * brackets "[]" replaced with your own identifying information:
+ * Portions Copyright [yyyy] [name of copyright owner]
+ *
+ * CDDL HEADER END
+ */
+/*
+ * Copyright 2021 RISC OS Developments Ltd.  All rights reserved.
+ * Use is subject to license terms.
+ */
+
+#include <stdio.h>
+#include <stdint.h>
+#include "swis.h"
+
+static void callback(void)
+{
+  __asm {
+        STR     r0, [r12]
+  }
+}
+
+int main(int argc, char *argv)
+{
+  (void) argc;
+  (void) argv;
+
+  int bus, slot;
+
+  printf("Background vs foreground SD operation speed comparison\n");
+  printf("Bus? ");
+  scanf(" %i", &bus);
+  printf("Slot? ");
+  scanf(" %i", &slot);
+
+  uint32_t countFG = 0, countBG = 0;
+  int32_t t, end; // signed so difference is automatically signed without cast
+  uint32_t command[] = { 0, 0 };
+
+  /* Repeatedly do foreground CMD0 ops for a second */
+  _swi(OS_ReadMonotonicTime, _OUT(0), &t);
+  do _swi(OS_ReadMonotonicTime, _OUT(0), &end); while (end == t);
+  end += 100;
+  do {
+    _swi(SDIO_Op, _INR(0,2)|_INR(4,5),
+        (slot << 0) | (bus << 8),
+        8,
+        command,
+        0,
+        10);
+    _swi(OS_ReadMonotonicTime, _OUT(0), &t);
+    ++countFG;
+  } while (t - end < 0);
+
+  /* Repeatedly do background CMD0 ops for another second */
+  static _kernel_oserror *volatile bg_status;
+  uint32_t bg_handle;
+  _swi(OS_ReadMonotonicTime, _OUT(0), &t);
+  do _swi(OS_ReadMonotonicTime, _OUT(0), &end); while (end == t);
+  end += 100;
+  do {
+    bg_status = (void *) -1;
+    _swi(SDIO_Op, _INR(0,2)|_INR(4,7)|_OUT(1),
+        (slot << 0) | (bus << 8) | (1u << 29),
+        8,
+        command,
+        0,
+        0,
+        callback,
+        &bg_status,
+        &bg_handle);
+    do  {
+      _swi(OS_ReadMonotonicTime, _OUT(0), &t);
+    } while (t - end < 0 && bg_status == (void *) -1);
+    if (t - end < 0)
+      ++countBG;
+  } while (t - end < 0);
+  _swi(SDIO_Control, _INR(0,2), 5, (slot << 0) | (bus << 8), bg_handle);
+
+  printf("Foreground ops per second: %u\n", countFG);
+  printf("Background ops per second: %u\n", countBG);
+}

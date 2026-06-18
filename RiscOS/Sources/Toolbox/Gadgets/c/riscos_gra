@@ -1,0 +1,120 @@
+/* Copyright 1997 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Modernised 2026 (rewritten from s.riscos_gra; behaviour unchanged). */
+/* Title:   riscos_gra.c
+ * Purpose: Graphics-window / plot / ColourTrans veneers for the TextGadgets
+ *          module.  Previously hand-written assembler (s.riscos_gra).
+ *          Functions are prototyped in riscos_uti.h.
+ */
+
+#include "kernel.h"
+#include "swis.h"
+
+#include "tboxlibint/twimp.h"
+#include "riscos_uti.h"
+
+/* Reads the current graphics window, in OS units. */
+wimp_Bbox get_graphics_window(void)
+{
+  /* VDU variables: 128-131 = graphics window in pixels, 4/5 = x/y eig. */
+  static const int var_list[7] = { 128, 129, 130, 131, 4, 5, -1 };
+  int vars[6];
+  wimp_Bbox box;
+
+  _swix(OS_ReadVduVariables, _INR(0,1), var_list, vars);
+
+  box.xmin = vars[0] << vars[4];
+  box.ymin = vars[1] << vars[5];
+  box.xmax = vars[2] << vars[4];
+  box.ymax = vars[3] << vars[5];
+
+  return box;
+}
+
+/* Sets the graphics window (VDU 24), normalising min/max if needed. */
+void set_graphics_window(wimp_Bbox box)
+{
+  unsigned char block[9];
+  int xmin = box.xmin, ymin = box.ymin;
+  int xmax = box.xmax, ymax = box.ymax;
+  int tmp;
+
+  if (xmin > xmax)
+  {
+    tmp = xmin; xmin = xmax; xmax = tmp;
+  }
+  if (ymin > ymax)
+  {
+    tmp = ymin; ymin = ymax; ymax = tmp;
+  }
+
+  block[0] = 24;                          /* VDU 24 - define graphics window */
+  block[1] = (unsigned char)(xmin & 0xff);
+  block[2] = (unsigned char)((xmin >> 8) & 0xff);
+  block[3] = (unsigned char)(ymin & 0xff);
+  block[4] = (unsigned char)((ymin >> 8) & 0xff);
+  block[5] = (unsigned char)(xmax & 0xff);
+  block[6] = (unsigned char)((xmax >> 8) & 0xff);
+  block[7] = (unsigned char)(ymax & 0xff);
+  block[8] = (unsigned char)((ymax >> 8) & 0xff);
+
+  _swix(OS_WriteN, _INR(0,1), block, 9);
+}
+
+/* Sets a graphics window clipped to an enclosing one.
+ * Returns 0 if the resulting window is empty, else 1. */
+int set_graphics_window_in_window(wimp_Bbox inside, wimp_Bbox outside)
+{
+  if (inside.xmin >= outside.xmax || inside.ymin >= outside.ymax ||
+      inside.xmax <= outside.xmin || inside.ymax <= outside.ymin)
+  {
+    wimp_Bbox zero;
+
+    zero.xmin = zero.ymin = zero.xmax = zero.ymax = 0;
+    set_graphics_window(zero);
+    return 0;
+  }
+
+  if (inside.xmin < outside.xmin) inside.xmin = outside.xmin;
+  if (inside.xmax > outside.xmax) inside.xmax = outside.xmax;
+  if (inside.ymin < outside.ymin) inside.ymin = outside.ymin;
+  if (inside.ymax > outside.ymax) inside.ymax = outside.ymax;
+
+  set_graphics_window(inside);
+  return 1;
+}
+
+/* Performs an OS_Plot. */
+_kernel_oserror *os_plot(unsigned short command, int x, int y)
+{
+  return _swix(OS_Plot, _INR(0,2), command, x, y);
+}
+
+/* Sets the graphics colour from a palette entry (ColourTrans_SetGCOL). */
+_kernel_oserror *colourtrans_set_gcol(unsigned int colour,
+        unsigned int flags, unsigned int action)
+{
+  return _swix(ColourTrans_SetGCOL, _IN(0) | _IN(3) | _IN(4),
+               colour, flags, action);
+}
+
+/* Sets the anti-aliased font colours (ColourTrans_SetFontColours). */
+_kernel_oserror *colourtrans_set_font_colours(unsigned int font_handle,
+        unsigned int background, unsigned int foreground,
+        unsigned int max_offset)
+{
+  return _swix(ColourTrans_SetFontColours, _INR(0,3),
+               font_handle, background, foreground, max_offset);
+}
