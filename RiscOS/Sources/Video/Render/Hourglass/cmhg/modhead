@@ -1,0 +1,69 @@
+; Copyright 1996 Acorn Computers Ltd
+;
+; Licensed under the Apache License, Version 2.0 (the "License");
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+;
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
+;
+; Module header for Hourglass.
+;
+; Ported from assembler to C, 2026 (behaviour unchanged).  Replaces the hand-
+; written module header in s/Module.  Processed by CMunge (a superset of CMHG).
+;
+; Hourglass is a SWI-providing module (7 SWIs, chunk base &406C0) plus the *HOn
+; and *HOff commands.  Unknown SWIs in our chunk return error_BAD_SWI (CMunge
+; supplies it; the assembler used the global "BadSWI" message to the same end).
+
+#include "Global/Services.h"
+#include "VersionNum"
+
+title-string:           Hourglass
+
+help-string:            Hourglass Module_MajorVersion_CMHG Module_MinorVersion_CMHG
+
+date-string:            Module_Date_CMHG
+
+initialisation-code:    hourglass_init
+
+finalisation-code:      hourglass_final
+
+; Any error turns the hourglass off (Service_Error); a soft reset re-initialises.
+service-call-handler:   hourglass_service Service_Error,
+                                          Service_Reset
+
+; SWIs (chunk base &406C0).  Order is fixed by the ABI; one C handler each.
+; The base handler catches any SWI in the chunk without its own handler (e.g. an
+; unknown SWI offset) and returns error_BAD_SWI, as the assembler did.
+swi-handler-code:       hourglass_swi
+swi-chunk-base-number:  0x406C0
+swi-decoding-table:     Hourglass On/swi_on,
+                                  Off/swi_off,
+                                  Smash/swi_smash,
+                                  Start/swi_start,
+                                  Percentage/swi_percentage,
+                                  LEDs/swi_leds,
+                                  Colours/swi_colours
+
+; *HOn / *HOff (help + syntax come from the international Messages resource).
+command-keyword-table:  hourglass_command
+        HOn(min-args:0, max-args:0, international:,
+                help-text:      "HHON",
+                invalid-syntax: "SHON"),
+        HOff(min-args:0, max-args:0, international:,
+                help-text:      "HHOFF",
+                invalid-syntax: "SHOFF")
+
+international-help-file: "Resources:$.Resources.Hourglass.Messages"
+
+; Vector handlers: TickerV animates the hourglass, PaletteV tracks other tasks
+; changing the pointer colours.  Each generates an entry symbol (tickerv /
+; palettev) used by OS_Claim/OS_Release in c/module, calling tickerv_handler /
+; palettev_handler.  (The tick handler may run in IRQ; see s/Veneer.)
+vector-handlers:        tickerv, palettev

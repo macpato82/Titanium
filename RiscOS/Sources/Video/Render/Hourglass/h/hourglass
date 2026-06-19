@@ -1,0 +1,148 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Shared constants, state and cross-file prototypes for the Hourglass module
+ * (was the workspace + EQUs at the top of s/Module).  The single persistent
+ * state block is the global `g` below - ordinary static data relocated by the
+ * Shared C Library, NOT the module private word.
+ */
+#ifndef HOURGLASS_HOURGLASS_H
+#define HOURGLASS_HOURGLASS_H
+
+#include "kernel.h"
+
+/* --- Hourglass shape / position ----------------------------------------- */
+#define HG_X              4
+#define HG_Y              2
+#define HG_SIZE           16
+#define ACTIVE_X          (HG_X + (HG_SIZE >> 1))   /* 12 */
+#define ACTIVE_Y          (HG_Y + (HG_SIZE >> 1))   /* 10 */
+
+/* --- Timing (centiseconds) ---------------------------------------------- */
+#define UPDATE_DELAY      15
+#define STARTUP_DELAY     33
+
+/* --- Bitmap geometry (keep on byte boundaries) -------------------------- */
+#define PIXELS_PER_BYTE   4
+#define BYTES_PER_LINE    6
+#define HEIGHT_IN_PIXELS  30
+#define DATA_SIZE         ((BYTES_PER_LINE * HEIGHT_IN_PIXELS + 3) & ~3)  /* 180 */
+#define HOURGLASS_FRAMES  7
+#define PERC_X            0
+#define PERC_Y            21
+#define CHAR_WIDTH        8
+#define CHAR_HEIGHT       9
+
+/* --- Default pointer colours (&00BBGGRR) -------------------------------- */
+#define DEFAULT_COLOUR1   0xFFF6D5      /* cyan  */
+#define DEFAULT_COLOUR2   0x0
+#define DEFAULT_COLOUR3   0xFFA100      /* blue  */
+
+/* A large value parked in percentage_depth to mean "no controlling depth". */
+#define BIGNUM            0x3FFFFFFF
+
+/* --- OS reason codes (Hdr:OsBytes / Hdr:OsWords) ------------------------ */
+#define OsByte_Wait                        19
+#define OsByte_SelectPointer               106
+#define OsByte_RW_LastResetType            253
+#define OsWord_WritePalette                12
+#define OsWord_DefinePointerAndMouse       21
+#define OWPointerAndMouse_SetPointerShape  0
+
+/* --- Vectors (Hdr:RISCOS) ----------------------------------------------- */
+#define TickerV   0x1C
+#define PaletteV  0x23
+
+/* Vector handler return values.  CMunge's generated modhead.h defines these
+ * identically (claim 0, pass on 1); guard so including both does not clash. */
+#ifndef VECTOR_CLAIM
+#define VECTOR_CLAIM   (0)
+#endif
+#ifndef VECTOR_PASSON
+#define VECTOR_PASSON  (1)
+#endif
+
+/* --- OS_Word 21 (define pointer) block, byte offsets -------------------- *
+ * reason, pointer number, width, height, active X, active Y, then a 4-byte
+ * data pointer.  The data pointer (at +6) must be word-aligned, so the state
+ * struct prefixes the block with 2 bytes (cf. the asm OSWord15Block-2 trick). */
+#define OSWB_REASON       0
+#define OSWB_NUMBER       1
+#define OSWB_WIDTH        2
+#define OSWB_HEIGHT       3
+#define OSWB_ACTIVEX      4
+#define OSWB_ACTIVEY      5
+#define OSWB_DATAPTR      6
+#define OSWORD_BLOCK_SIZE 12
+
+/* --- Persistent module state (was the s/Module workspace) --------------- */
+typedef struct hourglass_state {
+  /* Word-aligned section first (keeps the OS_Word data pointer aligned). */
+  int   timer;                  /* HourglassTimer    : countdown to next update */
+  int   depth;                  /* HourglassDepth    : On/Off nesting count     */
+  int   percentage_depth;       /* PercentageDepth                              */
+  void *pw;                     /* module private word (for OS_Claim/Release)    */
+  int   return_colours[2];      /* [0]=colour1 [1]=colour3 (off values)         */
+  int   nexth_colours[2];       /* colours to (re)assert at next update         */
+  int   current_colours[2];     /* colours actually in use (tracked on PaletteV)*/
+
+  unsigned char data[DATA_SIZE];/* HourglassData: the pointer bitmap (180)      */
+
+  /* OS_Word 21 block.  osword_prefix sits at a word boundary, so osword_block
+   * starts at word+2 and its data pointer (osword_block+6) is word-aligned. */
+  unsigned char osword_prefix[2];
+  unsigned char osword_block[OSWORD_BLOCK_SIZE];
+
+  /* Loose bytes. */
+  unsigned char old_percentage;
+  unsigned char new_percentage;
+  unsigned char old_leds;
+  unsigned char new_leds;
+  unsigned char return_pointer; /* pointer number to return to when off         */
+  unsigned char state;          /* HourglassState: sand frame 0..5              */
+  unsigned char pointer_dirty;  /* non-zero => pointer shape not yet set up      */
+  unsigned char update_semaphore;/* non-zero => inside the tick update           */
+} hourglass_state;
+
+extern hourglass_state g;
+
+/* --- Cross-file prototypes ---------------------------------------------- */
+
+/* c/module - module interface (referenced by cmhg/modhead) */
+extern _kernel_oserror *hourglass_init(const char *tail, int podule, void *pw);
+extern _kernel_oserror *hourglass_final(int fatal, int podule, void *pw);
+extern void             hourglass_service(int service, _kernel_swi_regs *r,
+                                          void *pw);
+extern _kernel_oserror *hourglass_command(const char *args, int argc, int cmd,
+                                          void *pw);
+
+/* c/module - SWI handlers */
+extern _kernel_oserror *swi_on(int n, _kernel_swi_regs *r, void *pw);
+extern _kernel_oserror *swi_off(int n, _kernel_swi_regs *r, void *pw);
+extern _kernel_oserror *swi_smash(int n, _kernel_swi_regs *r, void *pw);
+extern _kernel_oserror *swi_start(int n, _kernel_swi_regs *r, void *pw);
+extern _kernel_oserror *swi_percentage(int n, _kernel_swi_regs *r, void *pw);
+extern _kernel_oserror *swi_leds(int n, _kernel_swi_regs *r, void *pw);
+extern _kernel_oserror *swi_colours(int n, _kernel_swi_regs *r, void *pw);
+
+/* c/module - base SWI handler (unknown SWIs in our chunk) */
+extern _kernel_oserror *hourglass_swi(int number, _kernel_swi_regs *r, void *pw);
+
+/* c/module - vector handlers (called via the CMunge veneers tickerv/palettev) */
+extern int              tickerv_handler(_kernel_swi_regs *r, void *pw);
+extern int              palettev_handler(_kernel_swi_regs *r, void *pw);
+
+#endif

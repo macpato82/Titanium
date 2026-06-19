@@ -14,37 +14,51 @@
 #
 # Makefile for Hourglass
 #
+# Converted from assembler (AAsmModule) to C (CModule), 2026.
+#
 
 COMPONENT  = Hourglass
-HEADER1    = Hourglass
-ROM_SOURCE = Module.s
+TARGET     = Hourglass
+CMHGFILE   = modhead
+# module = C body; Veneer = the one retained asm routine (IRQ->SVC mode switch).
+OBJS       = module Veneer
+# c/module #includes the CMunge-generated modhead.h (for error_BAD_SWI), so the
+# header must be generated (cmunge -d) before it compiles.
+CMHGDEPENDS = module
+# Keep exporting hdr/Hourglass as Hdr:Hourglass (the SWI definitions other
+# modules' swis.h depends on); unchanged from the assembler component.
+ASMHDRS    = Hourglass
+HDRS       =
+CINCLUDES  = ${RINC}
+CMHGDEFINES = -DCOMPONENT=${COMPONENT} ${CDEFINES}
 
 include StdTools
-include AAsmModule
+include CModule
+
+# Use CMunge regardless of which BuildSys StdTools is on the make path (it
+# understands the module header this component relies on).  -32bit because
+# CMunge defaults to -26bit.
+CMHG       = cmunge -tnorcroft -32bit
+
+# ROM C modules are fixed-position: link against the shared C library's absolute
+# symbols, and pull in the run-time library for the standalone (RAM) build.
+ROM_SYMS   = ${ABSSYM}
+SA_LIBS    += ${RLIB}
 
 # Dynamic dependencies:
-o.CortexA7.Hourglass: s.Module
-o.CortexA7.Hourglass: Hdr:ListOpts
-o.CortexA7.Hourglass: Hdr:Macros
-o.CortexA7.Hourglass: Hdr:System
-o.CortexA7.Hourglass: Hdr:SWIs
-o.CortexA7.Hourglass: Hdr:CPU.Arch
-o.CortexA7.Hourglass: Hdr:Machine.<Machine>
-o.CortexA7.Hourglass: Hdr:Machine.Machine
-o.CortexA7.Hourglass: Hdr:CPU.Generic26
-o.CortexA7.Hourglass: Hdr:CPU.Generic32
-o.CortexA7.Hourglass: Hdr:IO.GenericIO
-o.CortexA7.Hourglass: Hdr:RISCOS
-o.CortexA7.Hourglass: Hdr:ModHand
-o.CortexA7.Hourglass: Hdr:Services
-o.CortexA7.Hourglass: Hdr:Hourglass
-o.CortexA7.Hourglass: Hdr:MsgTrans
-o.CortexA7.Hourglass: Hdr:FSNumbers
-o.CortexA7.Hourglass: Hdr:OsBytes
-o.CortexA7.Hourglass: Hdr:OsWords
-o.CortexA7.Hourglass: Hdr:NewErrors
-o.CortexA7.Hourglass: Hdr:Proc
-o.CortexA7.Hourglass: Hdr:Wimp
-o.CortexA7.Hourglass: VersionASM
-o.CortexA7.Hourglass: Hdr:NdrDebug
-o.CortexA7.Hourglass: Hdr:HostFS
+o.module:	c.module
+o.module:	C:h.kernel
+o.module:	C:h.swis
+o.module:	C:Global.h.Services
+o.module:	h.modhead
+o.module:	C:h.kernel
+o.module:	h.hourglass
+o.module:	C:h.kernel
+o.module:	h.shapes
+h.modhead:	cmhg.modhead
+h.modhead:	C:Global.h.Services
+h.modhead:	VersionNum
+o.Veneer: s.Veneer
+o.modhead:	cmhg.modhead
+o.modhead:	C:Global.h.Services
+o.modhead:	VersionNum

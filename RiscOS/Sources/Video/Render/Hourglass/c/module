@@ -1,0 +1,582 @@
+/* Copyright 1996 Acorn Computers Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Ported from assembler to C, 2026 (behaviour unchanged). */
+/*
+ * Hourglass module (was s/Module).  Persistent state is the global `g`
+ * (relocated by the Shared C Library), never the module private word.
+ *
+ * The hourglass is animated from TickerV and pointer-colour changes are tracked
+ * from PaletteV; both are claimed via the CMunge veneers (tickerv / palettev).
+ * The per-frame update issues SWIs, which are unsafe in the IRQ context TickerV
+ * is called in, so it is run through hg_call_in_svc (s/Veneer), the one retained
+ * assembler routine, which switches to SVC mode around it.
+ */
+#include <string.h>
+
+#include "kernel.h"
+#include "swis.h"
+
+#include "Global/Services.h"
+
+#include "modhead.h"
+#include "hourglass.h"
+#include "shapes.h"
+
+/* The single persistent state block (was the s/Module workspace). */
+hourglass_state g;
+
+/* CMunge-generated vector veneer entry points (used in OS_Claim/OS_Release). */
+extern void tickerv(void);
+extern void palettev(void);
+
+/* The IRQ->SVC mode-switch shim (s/Veneer). */
+extern void hg_call_in_svc(void (*fn)(void));
+
+/* Forward declarations for the file-local helpers. */
+static void read_pointer_colours(void);
+static void set_colour(int colour, int value);
+static void claim_palettev(void);
+static void release_palettev(void);
+static void initialise_pointer_info(void);
+static void restore_pointer(void);
+static void setup_char(unsigned char *dest, const unsigned char *def);
+static void setup_pointer(void);
+static void fill_hourglass(void);
+static void setup_leds(void);
+static void setup_percentage(void);
+static void program_pointer(void);
+static _kernel_oserror *claim_ticker(void);
+static void release_ticker(void);
+static void do_off(void);
+
+/* ----------------------------------------------------------------------- *
+ *  Pointer colours (SWI helpers).
+ * ----------------------------------------------------------------------- */
+
+/* Read the current pointer colours 1 & 3 into current_colours (&00BBGGRR). */
+static void read_pointer_colours(void)
+{
+  int c;
+  if (_swix(OS_ReadPalette, _INR(0,1) | _OUT(2), 1, 25, &c) == NULL)
+    g.current_colours[0] = (int)((unsigned)c >> 8);
+  if (_swix(OS_ReadPalette, _INR(0,1) | _OUT(2), 3, 25, &c) == NULL)
+    g.current_colours[1] = (int)((unsigned)c >> 8);
+}
+
+/* Program pointer colour `colour` (1..3) to `value` (&00BBGGRR) via OS_Word 12. */
+static void set_colour(int colour, int value)
+{
+  unsigned char block[8];
+  block[0] = (unsigned char)colour;
+  block[1] = 25;                            /* pointer palette */
+  block[2] = (unsigned char)(value);        /* red   */
+  block[3] = (unsigned char)(value >> 8);   /* green */
+  block[4] = (unsigned char)(value >> 16);  /* blue  */
+  _swix(OS_Word, _INR(0,1), OsWord_WritePalette, block);
+}
+
+static void claim_palettev(void)
+{
+  _swix(OS_Claim, _INR(0,2), PaletteV, palettev, g.pw);
+}
+
+static void release_palettev(void)
+{
+  _swix(OS_Release, _INR(0,2), PaletteV, palettev, g.pw);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Pointer set-up / restore (was InitialisePointerInfo / RestorePointer).
+ * ----------------------------------------------------------------------- */
+static void initialise_pointer_info(void)
+{
+  read_pointer_colours();
+  g.return_colours[0] = g.current_colours[0];   /* return = current */
+  g.return_colours[1] = g.current_colours[1];
+
+  claim_palettev();                             /* watch others' colour changes */
+
+  g.return_pointer = 1;        /* don't read the live pointer number (flicker) */
+
+  g.nexth_colours[0] = DEFAULT_COLOUR1;         /* next = default */
+  g.nexth_colours[1] = DEFAULT_COLOUR3;
+
+  g.pointer_dirty = 1;         /* shape needs setting up */
+  g.old_leds = 0;
+  g.new_leds = 0;
+}
+
+static void restore_pointer(void)
+{
+  int old = 0;
+  int ret1, ret3, cur1, cur3;
+
+  /* Restore the old pointer number, but only if we were the last to change it;
+   * if someone else had set a non-default pointer, put theirs back. */
+  _swix(OS_Byte, _INR(0,1) | _OUT(1), OsByte_SelectPointer, g.return_pointer, &old);
+  if ((old & 0xFF) < 3)
+    _swix(OS_Byte, _INR(0,1), OsByte_SelectPointer, old);
+
+  release_palettev();
+
+  ret1 = g.return_colours[0]; ret3 = g.return_colours[1];
+  cur1 = g.current_colours[0]; cur3 = g.current_colours[1];
+  if (cur1 != ret1 || cur3 != ret3)
+    _swix(OS_Byte, _IN(0), OsByte_Wait);        /* wait for VSync if changing */
+  if (cur1 != ret1) set_colour(1, ret1);
+  if (cur3 != ret3) set_colour(3, ret3);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Bitmap builders (pure memory; were SetupPointer .. SetupChar).
+ * ----------------------------------------------------------------------- */
+
+/* Copy a 9-row, 2-byte-wide character glyph into the hourglass bitmap. */
+static void setup_char(unsigned char *dest, const unsigned char *def)
+{
+  int i;
+  for (i = 0; i < CHAR_HEIGHT; i++)
+  {
+    dest[0] = def[0];
+    dest[1] = def[1];
+    dest += BYTES_PER_LINE;
+    def += 2;
+  }
+}
+
+/* Lay down the base hourglass shape (first show only). */
+static void setup_pointer(void)
+{
+  g.old_percentage = (unsigned char)-1;
+  g.new_percentage = (unsigned char)-1;
+
+  memcpy(g.data, hourglass_shape, sizeof(hourglass_shape));
+  memset(g.data + sizeof(hourglass_shape), 0, DATA_SIZE - sizeof(hourglass_shape));
+
+  g.state = 0;
+  g.pointer_dirty = 0;          /* shape now clean */
+}
+
+/* Advance to the next sand frame by applying that frame's diff list. */
+static void fill_hourglass(void)
+{
+  const unsigned char *d;
+  int i;
+
+  g.state++;
+  if (g.state == 6)             /* keep in range 0..5 */
+    g.state = 0;
+
+  d = shape_diffs[g.state];
+  for (i = 0; ; i += 4)
+  {
+    int v0 = d[i], o0 = d[i + 1], v1 = d[i + 2], o1 = d[i + 3];
+    if ((v0 | o0 | v1 | o1) == 0)
+      break;                    /* zero word terminator */
+    g.data[o1] = (unsigned char)v1;   /* high pair first, as the assembler */
+    g.data[o0] = (unsigned char)v0;
+  }
+}
+
+/* Set the two LED bars from new_leds (each 0x55 off / 0xFF on). */
+static void setup_leds(void)
+{
+  unsigned char *p;
+  int v;
+
+  if (g.old_leds == g.new_leds)
+    return;
+  g.old_leds = g.new_leds;
+
+  p = g.data + (HG_X / PIXELS_PER_BYTE) + ((HG_Y - 1) * BYTES_PER_LINE);
+  v = (g.new_leds & 1) ? 0xFF : 0x55;
+  p[0] = p[1] = p[2] = p[3] = (unsigned char)v;
+
+  p += (HG_SIZE + 1) * BYTES_PER_LINE;
+  v = (g.new_leds & 2) ? 0xFF : 0x55;
+  p[0] = p[1] = p[2] = p[3] = (unsigned char)v;
+}
+
+/* Render the percentage figures (or blank them) into the bitmap. */
+static void setup_percentage(void)
+{
+  unsigned char *dest;
+
+  if (g.old_percentage == g.new_percentage)
+    return;
+  g.old_percentage = g.new_percentage;
+
+  dest = g.data + (PERC_X / PIXELS_PER_BYTE) + (PERC_Y * BYTES_PER_LINE);
+
+  if (g.new_percentage >= 100)
+  {
+    /* Off: blank the three cells.  (The shipping non-debug assembler had a
+     * latent bug here, leaving the source pointer at OldPercentage rather than
+     * the blank glyph; we blank with ch_space, matching the debug build.) */
+    setup_char(dest,                          ch_space);
+    setup_char(dest + 8 / PIXELS_PER_BYTE,    ch_space);
+    setup_char(dest + 16 / PIXELS_PER_BYTE,   ch_space);
+  }
+  else
+  {
+    int tens  = g.new_percentage / 10;
+    int units = g.new_percentage % 10;
+    setup_char(dest,                          ch_numbers[tens]);
+    setup_char(dest + 8 / PIXELS_PER_BYTE,    ch_numbers[units]);
+    setup_char(dest + 16 / PIXELS_PER_BYTE,   ch_percent);
+  }
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Show the current frame (was ProgramPointer).  Runs in SVC (via the tick
+ *  veneer) so its SWIs are safe.
+ * ----------------------------------------------------------------------- */
+static void program_pointer(void)
+{
+  int next1 = g.nexth_colours[0], next3 = g.nexth_colours[1];
+  int cur1  = g.current_colours[0], cur3 = g.current_colours[1];
+  int old;
+
+  /* Toggle the pointer number 3<->4 (double-buffer the shape). */
+  g.osword_block[OSWB_NUMBER] ^= (3 ^ 4);
+  _swix(OS_Word, _INR(0,1), OsWord_DefinePointerAndMouse, g.osword_block);
+
+  /* Reassert the colours only if they have changed. */
+  if (cur1 != next1 || cur3 != next3)
+  {
+    _swix(OS_Byte, _IN(0), OsByte_Wait);       /* wait for VSync */
+    release_palettev();                        /* so we don't catch our own change */
+    if (cur1 != next1) set_colour(1, next1);
+    if (cur3 != next3) set_colour(3, next3);
+    claim_palettev();
+    g.current_colours[0] = next1;
+    g.current_colours[1] = next3;
+  }
+
+  /* Select our pointer; note who set it last, for restoring on the way out. */
+  old = 0;
+  _swix(OS_Byte, _INR(0,1) | _OUT(1), OsByte_SelectPointer,
+        g.osword_block[OSWB_NUMBER], &old);
+  old &= 0xFF;
+  if (old < 3)
+    g.return_pointer = (unsigned char)old;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  TickerV: drive the animation (was MyTickRoutine).
+ * ----------------------------------------------------------------------- */
+
+/* Count the timer down; return non-zero (and reset it) when an update is due. */
+static int tick_due(void)
+{
+  if (g.timer < 1)
+    return 0;                   /* delay 0 => never update */
+  if (--g.timer != 0)
+    return 0;                   /* still counting down */
+  g.timer = UPDATE_DELAY;       /* expired: reset and update */
+  return 1;
+}
+
+/* The per-frame update, run in SVC mode by hg_call_in_svc. */
+static void tick_update_worker(void)
+{
+  if (g.pointer_dirty != 0)
+    setup_pointer();
+  fill_hourglass();
+  setup_percentage();
+  setup_leds();
+  program_pointer();
+}
+
+int tickerv_handler(_kernel_swi_regs *r, void *pw)
+{
+  (void)r; (void)pw;
+
+  if (g.update_semaphore != 0)
+    return VECTOR_PASSON;       /* already updating: stay out */
+  g.update_semaphore = 1;
+
+  if (tick_due())
+    hg_call_in_svc(tick_update_worker);
+
+  g.update_semaphore = 0;
+  return VECTOR_PASSON;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  PaletteV: track others changing the pointer colours (was MyPaletteVRoutine).
+ * ----------------------------------------------------------------------- */
+int palettev_handler(_kernel_swi_regs *r, void *pw)
+{
+  int reason = r->r[4];
+  (void)pw;
+
+  if (reason == 2)              /* set single palette entry */
+  {
+    if (r->r[1] == 25)         /* pointer palette */
+    {
+      int val = (int)((unsigned)r->r[2] >> 8);
+      if (r->r[0] == 1) { g.return_colours[0] = val; g.current_colours[0] = val; }
+      if (r->r[0] == 3) { g.return_colours[1] = val; g.current_colours[1] = val; }
+    }
+  }
+  else if (reason == 8)        /* write palette entries */
+  {
+    if (((unsigned)r->r[1] >> 24) == 25 && r->r[0] != 0)
+    {
+      int count = r->r[1] & 0x00FFFFFF;
+      const int *logical = (const int *)r->r[0];
+      const int *values  = (const int *)r->r[2];
+      int i;
+      for (i = 0; i < count; i++)
+      {
+        int lc  = logical[i];
+        int val = (int)((unsigned)values[i] >> 8);
+        if (lc == 1)      { g.return_colours[0] = val; g.current_colours[0] = val; }
+        else if (lc == 3) { g.return_colours[1] = val; g.current_colours[1] = val; }
+      }
+    }
+  }
+
+  return VECTOR_PASSON;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  TickerV claim / release.
+ * ----------------------------------------------------------------------- */
+static _kernel_oserror *claim_ticker(void)
+{
+  return _swix(OS_Claim, _INR(0,2), TickerV, tickerv, g.pw);
+}
+
+static void release_ticker(void)
+{
+  _swix(OS_Release, _INR(0,2), TickerV, tickerv, g.pw);
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Workspace initialisation (was InitialiseWorkspace).
+ * ----------------------------------------------------------------------- */
+static void initialise_workspace(void)
+{
+  g.percentage_depth = BIGNUM;
+  g.depth = 0;
+  g.update_semaphore = 0;
+
+  g.osword_block[OSWB_REASON]  = OWPointerAndMouse_SetPointerShape;
+  g.osword_block[OSWB_NUMBER]  = 3;          /* toggles between 3 and 4 */
+  g.osword_block[OSWB_WIDTH]   = BYTES_PER_LINE;
+  g.osword_block[OSWB_HEIGHT]  = HEIGHT_IN_PIXELS;
+  g.osword_block[OSWB_ACTIVEX] = ACTIVE_X;
+  g.osword_block[OSWB_ACTIVEY] = ACTIVE_Y;
+  *(void **)(g.osword_block + OSWB_DATAPTR) = g.data;
+
+  initialise_pointer_info();
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Core on/off/start/smash (shared by the SWIs, command and service call).
+ * ----------------------------------------------------------------------- */
+static _kernel_oserror *do_start(int delay)
+{
+  g.depth++;
+
+  /* Update the timer on the first level, or if a deeper level wants an even
+   * earlier display. */
+  if (g.depth == 1 || (unsigned)delay <= (unsigned)g.timer)
+    g.timer = delay;
+
+  if (g.depth != 1)
+    return NULL;
+
+  initialise_pointer_info();
+  return claim_ticker();
+}
+
+static void do_off(void)
+{
+  int old = g.depth;
+
+  if (old == g.percentage_depth)
+  {
+    g.new_percentage = (unsigned char)-1;
+    g.percentage_depth = BIGNUM;
+  }
+
+  if (old == 0)
+    return;                     /* already off */
+  g.depth = old - 1;
+  if (g.depth != 0)
+    return;                     /* not the bottom level yet */
+
+  release_ticker();
+  if (g.pointer_dirty == 0)     /* shape was set up: undo it */
+    restore_pointer();
+}
+
+static void do_smash(void)
+{
+  if (g.depth != 0)
+  {
+    g.depth = 1;
+    g.percentage_depth = BIGNUM;
+    do_off();
+  }
+}
+
+/* ----------------------------------------------------------------------- *
+ *  SWI handlers.
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *swi_on(int n, _kernel_swi_regs *r, void *pw)
+{
+  (void)n; (void)r; (void)pw;
+  return do_start(STARTUP_DELAY);
+}
+
+_kernel_oserror *swi_start(int n, _kernel_swi_regs *r, void *pw)
+{
+  (void)n; (void)pw;
+  return do_start(r->r[0]);
+}
+
+_kernel_oserror *swi_off(int n, _kernel_swi_regs *r, void *pw)
+{
+  (void)n; (void)r; (void)pw;
+  do_off();
+  return NULL;
+}
+
+_kernel_oserror *swi_smash(int n, _kernel_swi_regs *r, void *pw)
+{
+  (void)n; (void)r; (void)pw;
+  do_smash();
+  return NULL;
+}
+
+_kernel_oserror *swi_percentage(int n, _kernel_swi_regs *r, void *pw)
+{
+  int pct = r->r[0];
+  int d  = g.depth;
+  int pd = g.percentage_depth;
+  (void)n; (void)pw;
+
+  if (d < pd)
+    g.percentage_depth = d;     /* take control of the percentage */
+  if (d <= pd)
+    g.new_percentage = (unsigned char)pct;
+
+  if (g.new_percentage >= 100)  /* re-enable at lower levels once off */
+    g.percentage_depth = BIGNUM;
+
+  return NULL;
+}
+
+_kernel_oserror *swi_leds(int n, _kernel_swi_regs *r, void *pw)
+{
+  unsigned char old = g.new_leds;
+  (void)n; (void)pw;
+
+  g.new_leds = (unsigned char)(r->r[0] ^ (r->r[1] & old));
+  r->r[0] = old;                /* return the previous LED state */
+  return NULL;
+}
+
+_kernel_oserror *swi_colours(int n, _kernel_swi_regs *r, void *pw)
+{
+  int old1 = g.nexth_colours[0];
+  int old3 = g.nexth_colours[1];
+  (void)n; (void)pw;
+
+  if (r->r[0] != -1)
+    g.nexth_colours[0] = r->r[0];
+  if (r->r[1] != -1)
+    g.nexth_colours[1] = r->r[1];
+
+  r->r[0] = old1;               /* return the previous colours */
+  r->r[1] = old3;
+  return NULL;
+}
+
+/* Base SWI handler: reached only for SWIs in our chunk with no own handler
+ * (e.g. an unknown SWI offset).  Report "no such SWI", as the assembler did. */
+_kernel_oserror *hourglass_swi(int number, _kernel_swi_regs *r, void *pw)
+{
+  (void)number; (void)r; (void)pw;
+  return error_BAD_SWI;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  *HOn / *HOff commands.
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *hourglass_command(const char *args, int argc, int cmd, void *pw)
+{
+  (void)args; (void)argc; (void)pw;
+
+  if (cmd == 0)                 /* *HOn */
+  {
+    _kernel_oserror *e = _swix(Wimp_SetPointerShape, _INR(0,1), 1, -1);
+    if (e == NULL)
+      e = do_start(STARTUP_DELAY);
+    return e;
+  }
+
+  do_smash();                   /* *HOff */
+  return NULL;
+}
+
+/* ----------------------------------------------------------------------- *
+ *  Module initialisation / finalisation / service.
+ * ----------------------------------------------------------------------- */
+_kernel_oserror *hourglass_init(const char *tail, int podule, void *pw)
+{
+  (void)tail; (void)podule;
+  g.pw = pw;
+  initialise_workspace();
+  return NULL;
+}
+
+_kernel_oserror *hourglass_final(int fatal, int podule, void *pw)
+{
+  (void)fatal; (void)podule; (void)pw;
+  do_smash();
+  return NULL;
+}
+
+void hourglass_service(int service, _kernel_swi_regs *r, void *pw)
+{
+  (void)r;
+  g.pw = pw;
+
+  switch (service)
+  {
+  case Service_Error:           /* any error turns the hourglass off */
+    do_smash();
+    break;
+
+  case Service_Reset:
+  {
+    int reset_type = 0;
+    if (_swix(OS_Byte, _INR(0,2) | _OUT(1),
+              OsByte_RW_LastResetType, 0, 255, &reset_type) != NULL)
+      break;
+    if (reset_type == 0)        /* soft reset only: re-initialise */
+      initialise_workspace();
+    break;
+  }
+
+  default:
+    break;
+  }
+}
