@@ -65,6 +65,28 @@ been removed (preserved in git history). The standalone (`-DSTANDALONE`) RAM
 build's ResourceFS registration is the one deliberately un-ported piece — the
 ROM build serves its resources through the ROM resource filing system instead.
 
+### Hourglass — whole-module assembler→C rewrite: **complete (build- & hardware-verified)**
+The busy-pointer module (`Video/Render/Hourglass`, module `Hourglass`, SWI chunk
+base `&406C0`) was a single ~1,100-line assembler file. It has been rewritten in
+C in place, Apache-2.0 retained, with a CMunge header and the build switched
+`AAsmModule`→`CModule` (v2.19→2.20). Unlike DisplayManager this is a SWI provider
+(`On`/`Off`/`Smash`/`Start`/`Percentage`/`LEDs`/`Colours`, plus `*HOn`/`*HOff`)
+that also runs in **interrupt context**, which shaped a hybrid design:
+
+| Part | Approach |
+|------|----------|
+| `PaletteV` colour tracking | pure C (CMunge `vector-handlers`) |
+| `TickerV` animation | C handler + one tiny retained veneer `s/Veneer` (`hg_call_in_svc`) that switches IRQ→SVC mode so the per-frame pointer SWIs are safe — C cannot switch processor mode |
+| Pointer bitmap / sand-frame diffs / digit glyphs | `h/shapes` C `const` tables, transcribed verbatim from the assembler `DCB` data |
+| Unknown SWIs in the chunk | base `swi-handler-code` returning `error_BAD_SWI` (`SYS &406FF` reports *"SWI out of range of module Hourglass"*, as the assembler did) |
+
+`s/Veneer` is the only retained assembler, with an in-file note explaining why.
+The OS_Word 21 pointer-definition block keeps its data pointer word-aligned via a
+two-byte prefix in the state struct (mirroring the assembler's alignment trick).
+The hand-written `s/Module` and `VersionASM` have been removed (preserved in git
+history). Design notes are in
+[Hourglass/DESIGN.md](RiscOS/Sources/Video/Render/Hourglass/DESIGN.md).
+
 ### Other areas
 Toolbox object modules and the ToolboxLib client library are reindented
 (see the tracker for the full list and per-component notes). Work on the rest of
